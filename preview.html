@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preview — Meu Ritmo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Poppins", ui-sans-serif, system-ui, sans-serif;
+        background: linear-gradient(160deg, #fdf9fc, #f3e8ff);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 32px 16px 64px;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 32px;
+      }
+
+      header h1 {
+        margin: 0 0 4px;
+        font-size: 22px;
+        color: #2d2438;
+      }
+
+      header p {
+        margin: 0;
+        font-size: 14px;
+        color: #6b6375;
+      }
+
+      .stage {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 48px;
+        align-items: flex-start;
+        justify-content: center;
+      }
+
+      .frame-label {
+        text-align: center;
+        margin-bottom: 12px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #a78bfa;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      /* Moldura de celular */
+      .phone {
+        width: 390px;
+        max-width: 90vw;
+        height: 820px;
+        max-height: 80vh;
+        background: #1a1a1a;
+        border-radius: 48px;
+        padding: 14px;
+        box-shadow: 0 30px 60px -20px rgba(45, 36, 56, 0.4);
+        position: relative;
+      }
+
+      .phone::before {
+        content: "";
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 120px;
+        height: 24px;
+        background: #1a1a1a;
+        border-radius: 0 0 16px 16px;
+        z-index: 2;
+      }
+
+      .phone iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        border-radius: 34px;
+        background: #fff;
+      }
+
+      /* Moldura de computador */
+      .desktop {
+        width: min(900px, 80vw);
+      }
+
+      .desktop-bar {
+        background: #e5e4e7;
+        border-radius: 12px 12px 0 0;
+        padding: 10px 14px;
+        display: flex;
+        gap: 6px;
+      }
+
+      .desktop-bar span {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #c7c5cc;
+        display: inline-block;
+      }
+
+      .desktop-screen {
+        width: 100%;
+        height: 760px;
+        max-height: 78vh;
+        background: #fff;
+        border-radius: 0 0 12px 12px;
+        box-shadow: 0 30px 60px -20px rgba(45, 36, 56, 0.3);
+        overflow: hidden;
+      }
+
+      .desktop-screen iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+
+      footer {
+        margin-top: 32px;
+        font-size: 13px;
+        color: #6b6375;
+        text-align: center;
+      }
+
+      code {
+        background: #ede9fe;
+        color: #2d2438;
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>💗 Meu Ritmo — Preview duplo</h1>
+      <p>O mesmo app rodando ao vivo, no celular e no computador ao mesmo tempo</p>
+    </header>
+
+    <div class="stage">
+      <div>
+        <p class="frame-label">Celular</p>
+        <div class="phone">
+          <iframe src="http://localhost:5173" title="Meu Ritmo — celular"></iframe>
+        </div>
+      </div>
+
+      <div>
+        <p class="frame-label">Computador</p>
+        <div class="desktop">
+          <div class="desktop-bar">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="desktop-screen">
+            <iframe src="http://localhost:5173" title="Meu Ritmo — computador"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      Deixe o app rodando com <code>npm run dev</code> e esta página aberta —
+      qualquer mudança no código atualiza sozinha nas duas telas.
+    </footer>
+  </body>
+</html>

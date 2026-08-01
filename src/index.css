@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+
+  --color-ritmo-pink-deep: #b0116a;
+  --color-ritmo-pink: #e0218a;
+  --color-ritmo-pink-soft: #ff6fb5;
+  --color-ritmo-pink-light: #ffd9ec;
+  --color-ritmo-pink-tint: #fff0f7;
+  --color-ritmo-bg: #fff7fb;
+  --color-ritmo-text: #241220;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+html {
+  font-size: 87.5%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-ritmo-bg);
+  color: var(--color-ritmo-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* O Safari no iOS dá zoom ao focar campos com fonte menor que 16px — e não
+   desfaz o zoom depois. Em telas de toque, força 16px nos campos.
+   Fora de @layer de propósito: precisa vencer as utilities do Tailwind. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
