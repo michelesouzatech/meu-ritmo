@@ -62,6 +62,7 @@ Cada tarefa, hábito e treino pertence só à Michele (login pessoal por e-mail 
 - [x] **Login por e-mail e senha** — Troca o login (antes só Google) por e-mail e senha via Supabase Auth, com "Esqueci minha senha" pra quem criou a conta na época do login antigo definir uma senha nova. A conexão com o Google Agenda passou a ser independente do login — dá pra conectar e reconectar sem trocar de sessão.
 - [x] **Perfil na barra de navegação** — "Perfil" virou um item fixo do menu inferior, acessível de qualquer tela (antes só abria pelo avatar na Home).
 - [x] **Lilás claro + liquid glass** — Terceira cor (lilás bem clarinho, `#F4EBFF`, derivado do mesmo tom do pink claro só girando o matiz) marcando informação secundária: selo de status do hábito, contador de exercícios da ficha de treino e a aba ativa da navegação. Essas superfícies, mais o card de resumo do dia e o anel de progresso, ganharam o material "vidro líquido" — painel translúcido, desfoque de fundo, um fio de luz na borda — sobre manchas suaves de cor adicionadas ao fundo do app pra dar profundidade ao desfoque.
+- [x] **Card de hábito mais enxuto + ciclo futuro corrigido** — Os ícones de editar e excluir saíram de uma linha inteira no rodapé do card e passaram pra logo abaixo do selo de status, deixando o card mais compacto. Hábito de ciclo com data de início no futuro não conta mais o dia da criação como "dia 1": mostra o selo "em breve" e só começa a contar a partir da data de início escolhida.
 
 ## 6. Versão 2 (fica pra depois)
 
