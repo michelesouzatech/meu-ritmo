@@ -67,12 +67,12 @@ export function clearGoogleToken() {
   }
 }
 
-// Manda pro Google pedindo a permissão da agenda, ligando a conta Google à
-// conta já logada (e-mail/senha) em vez de trocar de sessão. Se a pessoa já
-// autorizou antes, o Google devolve na hora, sem tela de consentimento.
-// Precisa do "manual linking" ligado em Authentication → Providers no Supabase.
+// Manda pro Google pedindo a permissão da agenda. A conta já tem a identidade
+// Google ligada desde a época do login por Google, então o Supabase sempre
+// reautentica essa mesma conta — nunca cria ou troca pra outra. Se a pessoa
+// já autorizou antes, o Google devolve na hora, sem tela de consentimento.
 export function connectGoogleCalendar() {
-  return supabase.auth.linkIdentity({
+  return supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       scopes: CALENDAR_SCOPE,

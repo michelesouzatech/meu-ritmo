@@ -40,10 +40,11 @@ VITE_SUPABASE_ANON_KEY=...
   token do Google fica guardado no navegador —
   [src/lib/googleCalendar.js](src/lib/googleCalendar.js) e
   [src/hooks/useGoogleCalendar.js](src/hooks/useGoogleCalendar.js). Essa
-  conexão usa `supabase.auth.linkIdentity`, que precisa do "manual linking"
-  ligado em Authentication → Providers no painel do Supabase. Como esse
-  token vale 1 hora e não é renovado sozinho, a tela inicial mostra o botão
-  "Reconectar Google Agenda" quando ele vence.
+  conexão usa `supabase.auth.signInWithOAuth` de novo — como a conta já tem a
+  identidade Google ligada desde a época do login por Google, o Supabase
+  sempre reautentica essa mesma conta. Como esse token vale 1 hora e não é
+  renovado sozinho, a tela inicial mostra o botão "Reconectar Google Agenda"
+  quando ele vence.
 - **Arquivos:** foto de perfil no bucket `avatars`, foto/PDF do treino no bucket
   `treinos` (privado, aberto por link temporário).
 - **Segurança:** RLS ligado nas 7 tabelas — cada conta só enxerga e mexe nos
