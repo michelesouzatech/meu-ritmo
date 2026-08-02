@@ -1,5 +1,5 @@
-import { AlertTriangle, Bell, Check, Droplet } from "lucide-react";
-import HabitRing from "../components/HabitRing.jsx";
+import { AlertTriangle, Bell, Check } from "lucide-react";
+import DayHabitsRing from "../components/DayHabitsRing.jsx";
 import AgendaCard from "../components/AgendaCard.jsx";
 import { todayISO, daysBetween } from "../lib/date.js";
 import { eventsOnDay, formatEventTime } from "../lib/googleCalendar.js";
@@ -77,7 +77,6 @@ function HomeScreen({
   user,
   calendar,
   onToggleTask,
-  onToggleHabitToday,
   onConnectCalendar,
   onRefreshCalendar,
   onOpenEvent,
@@ -222,59 +221,7 @@ function HomeScreen({
         </button>
       </div>
 
-      {activeHabits.length === 0 ? (
-        <p className="rounded-2xl bg-white p-4 text-center text-sm text-ritmo-text/50 shadow-sm shadow-ritmo-text/5">
-          Nenhum hábito ativo. Crie um na aba Hábitos.
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {activeHabits.slice(0, 3).map((habit) => {
-            const progress = habitProgress(habit);
-            const { doneToday, ratio } = progress;
-            return (
-              <div
-                key={habit.id}
-                className="rounded-2xl bg-white p-4 shadow-sm shadow-ritmo-text/5"
-              >
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => onToggleHabitToday(habit.id)}
-                    aria-label="Marcar hoje"
-                    className="relative flex h-14 w-14 shrink-0 items-center justify-center"
-                  >
-                    <HabitRing progress={ratio} />
-                    <Droplet
-                      size={18}
-                      className="absolute text-ritmo-pink"
-                      fill={doneToday ? "var(--color-ritmo-pink)" : "var(--color-ritmo-pink-light)"}
-                    />
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="min-w-0 flex-1 truncate text-sm font-medium text-ritmo-text">
-                        {habit.name}
-                      </p>
-                      <span className="shrink-0 rounded-full bg-ritmo-pink-light px-2 py-1 text-xs font-medium text-ritmo-pink-deep">
-                        {progress.isDaily
-                          ? "diário"
-                          : `dia ${progress.currentDay} de ${habit.periodDays}`}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-xs text-ritmo-text/50">
-                      {progress.isDaily
-                        ? progress.streak > 0
-                          ? `${progress.streak} dia${progress.streak === 1 ? "" : "s"} seguido${progress.streak === 1 ? "" : "s"}`
-                          : "Nenhum dia seguido ainda"
-                        : `${progress.daysRemaining} dia${progress.daysRemaining === 1 ? "" : "s"} restante${progress.daysRemaining === 1 ? "" : "s"} no ciclo`}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <DayHabitsRing done={habitsDoneTodayList.length} total={activeHabits.length} />
     </div>
   );
 }

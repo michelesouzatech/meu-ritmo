@@ -1,5 +1,4 @@
-function HabitRing({ progress, size = 56 }) {
-  const stroke = 5;
+function HabitRing({ progress, size = 56, stroke = 5 }) {
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - Math.min(1, Math.max(0, progress)));

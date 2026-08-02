@@ -380,7 +380,6 @@ function App() {
             user={session.user}
             calendar={calendar}
             onToggleTask={toggleTask}
-            onToggleHabitToday={(id) => toggleHabitDate(id, todayISO())}
             onConnectCalendar={connectGoogleCalendar}
             onRefreshCalendar={calendar.refresh}
             onOpenEvent={(event) => setSheet({ type: "event", event })}
