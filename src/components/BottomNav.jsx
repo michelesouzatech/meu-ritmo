@@ -1,4 +1,4 @@
-import { Home, ListChecks, Repeat, Dumbbell } from "lucide-react";
+import { Home, ListChecks, Repeat, Dumbbell, User } from "lucide-react";
 
 function NavItem({ icon: Icon, label, active, onClick }) {
   return (
@@ -19,6 +19,7 @@ const TABS = [
   { id: "tasks", label: "Tarefas", icon: ListChecks },
   { id: "habits", label: "Hábitos", icon: Repeat },
   { id: "workout", label: "Treino", icon: Dumbbell },
+  { id: "profile", label: "Perfil", icon: User },
 ];
 
 function BottomNav({ active, onNavigate }) {
