@@ -27,15 +27,18 @@ VITE_SUPABASE_ANON_KEY=...
 - **Dados:** Supabase (Postgres). Toda conversa com o banco fica em
   [src/lib/db.js](src/lib/db.js) — o resto do app usa os mesmos formatos de
   sempre.
-- **Login:** Google, via Supabase Auth.
+- **Login:** e-mail e senha, via Supabase Auth.
 - **Google Agenda:** ver, criar, editar e apagar compromissos
   (`calendar.events`), direto da tela inicial, numa grade de semana/mês que
   mostra também as tarefas do app —
   [src/components/AgendaCard.jsx](src/components/AgendaCard.jsx) desenha e
-  [src/lib/weekGrid.js](src/lib/weekGrid.js) calcula a posição dos blocos. O token do Google vem junto do
-  login e fica guardado no navegador —
+  [src/lib/weekGrid.js](src/lib/weekGrid.js) calcula a posição dos blocos. É
+  uma conexão à parte do login: a pessoa clica em "Conectar Google Agenda" e o
+  token do Google fica guardado no navegador —
   [src/lib/googleCalendar.js](src/lib/googleCalendar.js) e
-  [src/hooks/useGoogleCalendar.js](src/hooks/useGoogleCalendar.js). Como esse
+  [src/hooks/useGoogleCalendar.js](src/hooks/useGoogleCalendar.js). Essa
+  conexão usa `supabase.auth.linkIdentity`, que precisa do "manual linking"
+  ligado em Authentication → Providers no painel do Supabase. Como esse
   token vale 1 hora e não é renovado sozinho, a tela inicial mostra o botão
   "Reconectar Google Agenda" quando ele vence.
 - **Arquivos:** foto de perfil no bucket `avatars`, foto/PDF do treino no bucket
@@ -65,7 +68,8 @@ No mesmo projeto do Google Cloud onde está o OAuth usado pelo Supabase:
 3. **Público-alvo** → se o app estiver em modo "Teste", a conta precisa estar em
    **Usuários de teste**.
 
-Depois disso, sair e entrar de novo no app pra o Google pedir a nova permissão.
+Depois disso, clicar em "Conectar Google Agenda" de novo pra o Google pedir a
+nova permissão.
 
 ## Instalar no celular (PWA)
 
