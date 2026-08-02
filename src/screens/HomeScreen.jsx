@@ -4,61 +4,50 @@ import AgendaCard from "../components/AgendaCard.jsx";
 import { todayISO, daysBetween } from "../lib/date.js";
 import { eventsOnDay, formatEventTime } from "../lib/googleCalendar.js";
 import { habitProgress } from "./HabitsScreen.jsx";
-import { joinNames } from "../lib/text.js";
+import { joinNamesCapped } from "../lib/text.js";
 
-function taskSummary(overdueTasks, dueTodayTasks, today) {
-  const sentences = [];
-
+// Um resumo só, sempre a coisa mais relevante do momento — não um textão com
+// tudo. Tarefa atrasada > tarefa de hoje > hábito pendente > próximo
+// compromisso > tudo em dia. O detalhe completo de cada área já aparece logo
+// abaixo (lista de tarefas, agenda, anel de hábitos), então o resumo não
+// precisa repetir tudo.
+function homeSummary({ overdueTasks, dueTodayTasks, doneHabits, pendingHabits, events, today }) {
   if (overdueTasks.length === 1) {
     const daysLate = daysBetween(overdueTasks[0].date, today);
-    sentences.push(
-      `A tarefa "${overdueTasks[0].title}" está atrasada há ${daysLate} dia${daysLate === 1 ? "" : "s"}.`,
-    );
-  } else if (overdueTasks.length > 1) {
-    const parts = overdueTasks.map((t) => {
-      const daysLate = daysBetween(t.date, today);
-      return `"${t.title}" (${daysLate} dia${daysLate === 1 ? "" : "s"})`;
-    });
-    sentences.push(`As tarefas ${joinNames(parts)} estão atrasadas.`);
+    return `A tarefa "${overdueTasks[0].title}" está atrasada há ${daysLate} dia${daysLate === 1 ? "" : "s"}.`;
+  }
+  if (overdueTasks.length > 1) {
+    const oldest = overdueTasks[0];
+    const daysLate = daysBetween(oldest.date, today);
+    return `Você tem ${overdueTasks.length} tarefas atrasadas — a mais antiga é "${oldest.title}" (${daysLate} dia${daysLate === 1 ? "" : "s"}).`;
   }
 
   if (dueTodayTasks.length === 1) {
-    sentences.push(`A tarefa "${dueTodayTasks[0].title}" vence hoje.`);
-  } else if (dueTodayTasks.length > 1) {
-    const parts = dueTodayTasks.map((t) => `"${t.title}"`);
-    sentences.push(`As tarefas ${joinNames(parts)} vencem hoje.`);
+    return `A tarefa "${dueTodayTasks[0].title}" vence hoje.`;
+  }
+  if (dueTodayTasks.length > 1) {
+    return `Você tem ${dueTodayTasks.length} tarefas vencendo hoje.`;
   }
 
-  if (sentences.length === 0) return "Nenhuma tarefa pendente por hoje. 🎉";
-  return sentences.join(" ");
-}
-
-function habitSummary(doneToday, pendingToday) {
-  if (doneToday.length === 0 && pendingToday.length === 0) return null;
-
-  const doneNames = joinNames(doneToday.map((h) => h.name));
-  const pendingNames = joinNames(pendingToday.map((h) => h.name));
-
-  if (doneToday.length > 0 && pendingToday.length > 0) {
-    return `Hoje você já fez ${doneNames}, mas ainda faltam ${pendingNames}.`;
+  if (pendingHabits.length > 0) {
+    return `Hoje ainda falta ${joinNamesCapped(pendingHabits.map((h) => h.name))}.`;
   }
-  if (doneToday.length > 0) {
-    return `Hoje você já fez todos os hábitos: ${doneNames}! 🎉`;
+  if (doneHabits.length > 0) {
+    return "Você já cuidou de todos os hábitos de hoje! 🎉";
   }
-  return `Hoje ainda faltam ${pendingNames}.`;
-}
 
-function agendaSummary(events, today) {
   const todayEvents = eventsOnDay(events, today);
-  if (todayEvents.length === 0) return null;
+  if (todayEvents.length > 0) {
+    const now = new Date();
+    const next = todayEvents.find((e) => e.allDay || e.end > now);
+    if (next) {
+      return next.allDay
+        ? `Hoje você tem "${next.title}" na agenda.`
+        : `Hoje você tem "${next.title}" às ${formatEventTime(next)}.`;
+    }
+  }
 
-  const now = new Date();
-  const next = todayEvents.find((e) => e.allDay || e.end > now);
-  const count = `${todayEvents.length} compromisso${todayEvents.length === 1 ? "" : "s"}`;
-
-  if (!next) return `Seus ${count} de hoje já passaram.`;
-  if (next.allDay) return `Hoje você tem ${count} na agenda, incluindo "${next.title}".`;
-  return `Hoje você tem ${count} na agenda — o próximo é "${next.title}" às ${formatEventTime(next)}.`;
+  return "Tudo em dia por aqui! Nenhuma pendência hoje. 🎉";
 }
 
 function firstName(user) {
@@ -94,7 +83,14 @@ function HomeScreen({
   const activeHabits = habits.filter((h) => !habitProgress(h).isFinished);
   const habitsDoneTodayList = activeHabits.filter((h) => habitProgress(h).doneToday);
   const habitsPendingTodayList = activeHabits.filter((h) => !habitProgress(h).doneToday);
-  const agendaLine = calendar.status === "ready" ? agendaSummary(calendar.events, today) : null;
+  const summaryLine = homeSummary({
+    overdueTasks,
+    dueTodayTasks: todaysTasks,
+    doneHabits: habitsDoneTodayList,
+    pendingHabits: habitsPendingTodayList,
+    events: calendar.status === "ready" ? calendar.events : [],
+    today,
+  });
 
   return (
     <div>
@@ -137,15 +133,7 @@ function HomeScreen({
 
       <section className="mb-5 rounded-2xl bg-gradient-to-br from-ritmo-pink-deep to-ritmo-pink px-4 py-3 text-white shadow-md shadow-ritmo-pink/30">
         <p className="text-xs opacity-90">Seu resumo de hoje</p>
-        <p className="mt-1 text-xs font-medium leading-snug">
-          {taskSummary(overdueTasks, todaysTasks, today)}
-        </p>
-        {habitSummary(habitsDoneTodayList, habitsPendingTodayList) && (
-          <p className="mt-1 text-xs font-medium leading-snug">
-            {habitSummary(habitsDoneTodayList, habitsPendingTodayList)}
-          </p>
-        )}
-        {agendaLine && <p className="mt-1 text-xs font-medium leading-snug">{agendaLine}</p>}
+        <p className="mt-1 text-sm font-medium leading-snug">{summaryLine}</p>
       </section>
 
       <AgendaCard
