@@ -28,6 +28,7 @@ export function HabitFormSheet({ habit, onClose, onSave }) {
   const [name, setName] = useState(habit?.name ?? "");
   const [hasCycle, setHasCycle] = useState(!!habit?.periodDays);
   const [periodDays, setPeriodDays] = useState(habit?.periodDays ?? 7);
+  const [startDate, setStartDate] = useState(habit?.startDate ?? todayISO());
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -36,7 +37,8 @@ export function HabitFormSheet({ habit, onClose, onSave }) {
     onSave({
       name: name.trim(),
       periodDays: hasCycle ? Number(periodDays) : null,
-      ...(isEditing ? {} : { startDate: todayISO(), completions: [] }),
+      startDate,
+      ...(isEditing ? {} : { completions: [] }),
     });
     onClose();
   }
@@ -70,19 +72,32 @@ export function HabitFormSheet({ habit, onClose, onSave }) {
         </label>
 
         {hasCycle ? (
-          <div>
-            <label className="mb-1 block text-sm font-medium text-ritmo-text/70">
-              Duração do ciclo (dias)
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={365}
-              value={periodDays}
-              onChange={(e) => setPeriodDays(e.target.value)}
-              className="min-h-11 w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 text-sm text-ritmo-text outline-none focus:border-ritmo-pink"
-            />
-          </div>
+          <>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-ritmo-text/70">
+                Duração do ciclo (dias)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={periodDays}
+                onChange={(e) => setPeriodDays(e.target.value)}
+                className="min-h-11 w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 text-sm text-ritmo-text outline-none focus:border-ritmo-pink"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-ritmo-text/70">
+                Início do ciclo
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="min-h-11 w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 text-sm text-ritmo-text outline-none focus:border-ritmo-pink"
+              />
+            </div>
+          </>
         ) : (
           <p className="text-xs text-ritmo-text/45">
             Sem ciclo definido, esse hábito é diário e não tem data pra terminar — você marca todo dia que cumprir.

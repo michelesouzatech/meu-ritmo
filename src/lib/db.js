@@ -58,6 +58,7 @@ function habitColumns(data) {
   const out = {};
   if ("name" in data) out.name = data.name;
   if ("periodDays" in data) out.period_days = data.periodDays ?? null;
+  if ("startDate" in data) out.start_date = data.startDate;
   return out;
 }
 
