@@ -11,6 +11,7 @@ import WorkoutScreen, {
 } from "./screens/WorkoutScreen.jsx";
 import ProfileScreen from "./screens/ProfileScreen.jsx";
 import LoginScreen from "./screens/LoginScreen.jsx";
+import ResetPasswordScreen from "./screens/ResetPasswordScreen.jsx";
 import CatMascot from "./components/CatMascot.jsx";
 import EventFormSheet from "./components/EventFormSheet.jsx";
 import { todayISO } from "./lib/date.js";
@@ -36,6 +37,7 @@ function readLocal(key, fallback) {
 
 function App() {
   const [session, setSession] = useState(undefined);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [tab, setTab] = useState("home");
   const [sheet, setSheet] = useState(null);
 
@@ -55,7 +57,8 @@ function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
       setSession(newSession);
     });
     return () => subscription.subscription.unsubscribe();
@@ -348,6 +351,10 @@ function App() {
 
   if (session === undefined) {
     return <div className="min-h-dvh bg-ritmo-bg" />;
+  }
+
+  if (passwordRecovery) {
+    return <ResetPasswordScreen onDone={() => setPasswordRecovery(false)} />;
   }
 
   if (session === null) {

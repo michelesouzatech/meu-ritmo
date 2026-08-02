@@ -27,7 +27,10 @@ VITE_SUPABASE_ANON_KEY=...
 - **Dados:** Supabase (Postgres). Toda conversa com o banco fica em
   [src/lib/db.js](src/lib/db.js) — o resto do app usa os mesmos formatos de
   sempre.
-- **Login:** e-mail e senha, via Supabase Auth.
+- **Login:** e-mail e senha, via Supabase Auth. A tela de login tem "Esqueci
+  minha senha", que manda um link por e-mail pra definir a senha — é o
+  caminho pra quem já tinha conta (criada antes, pelo login com Google)
+  passar a entrar com senha.
 - **Google Agenda:** ver, criar, editar e apagar compromissos
   (`calendar.events`), direto da tela inicial, numa grade de semana/mês que
   mostra também as tarefas do app —
