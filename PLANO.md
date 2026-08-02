@@ -18,9 +18,9 @@
 
 | Tela | O que a pessoa faz nela |
 |---|---|
-| Início (Hoje) | Vê o resumo do dia: compromissos da Google Agenda + tarefas pendentes + hábitos do dia, com aviso automático de tarefa atrasada/vencendo hoje |
+| Início (Hoje) | Vê um resumo do dia curto e priorizado (tarefa mais urgente, hábitos pendentes com nome encurtado, avisos da agenda de hoje/amanhã), o anel de progresso dos hábitos do dia, a agenda do Google e as tarefas pendentes |
 | Tarefas | Adiciona, edita, marca como feita, marca como urgente, exclui (arrastando o card), vê pendentes e concluídas separadas |
-| Hábitos | Cria hábito diário (sem prazo, com sequência de dias) ou com ciclo por período; marca o progresso por um calendário/seletor de data; reinicia um novo ciclo quando termina |
+| Hábitos | Cria hábito diário (sem prazo, com sequência de dias) ou com ciclo por período (escolhendo a data de início); edita, marca o progresso por um calendário/seletor de data, reordena a lista por arrastar e reinicia um novo ciclo quando termina |
 | Treino | Sobe o PDF do treino (lido e organizado automaticamente por ficha/grupo, com revisão antes de salvar) ou cadastra manualmente; cada ficha abre como **menu suspenso** e os exercícios dentro dela podem ser **reordenados por arrastar (drag-and-drop)**; registra carga por exercício com histórico e painel geral; cadastra % de gordura mês a mês |
 | Perfil | Foto (upload), nome, estatísticas rápidas, sair da conta — e embute a tela de **Insights** logo abaixo |
 | Insights | Cruza tarefas + hábitos + treino + agenda: resumo da semana, o que está evoluindo, onde melhorar, sugestões práticas. Acessível dentro do Perfil (toque no avatar) |
@@ -57,6 +57,8 @@ Cada tarefa, hábito e treino pertence só à Michele (login pessoal via Google,
   - Mostra **todas as agendas** que estão marcadas na Google Agenda (Estudos, Exercícios, Pets...), cada uma na sua cor — não só a principal.
   - Feito no Google Cloud: **Google Calendar API** ativada e escopos `calendar.events` e `calendar.readonly` liberados em Acesso a dados — passo a passo no [README](README.md).
 - [x] **Ajustes de uso no celular** — Corrigido o zoom automático do iPhone ao tocar num campo de texto: o Safari amplia a tela sempre que a fonte do campo é menor que 16px e não desfaz o zoom depois. Os campos passaram a usar 16px em telas de toque (`src/index.css`), o que resolve na origem sem precisar bloquear a pinça pra ampliar.
+- [x] **Hábitos: editar, reordenar e escolher início do ciclo** — Cada hábito pode ser editado (nome, ciclo, data de início) por um lápis no card, e a lista pode ser reorganizada por arrastar — mesmo padrão de drag-and-drop já usado nos exercícios do Treino. Ao criar um hábito com ciclo, dá pra escolher a data de início em vez de sempre começar no dia da criação.
+- [x] **Home mais enxuta e resumo inteligente do dia** — A lista de hábitos saiu da tela inicial (ficou só na tela de Hábitos); no lugar entrou um anel de progresso mostrando o % concluído no dia. O card "Seu resumo de hoje" virou um resumo curto e priorizado — tarefa mais urgente, hábitos pendentes com nome encurtado (ex: "cardio 30 min" → "cardio", "alimentação 100% limpa" → "alimentação 100%") e avisos sobre compromissos de hoje e de amanhã na agenda — em vez de um texto único e genérico.
 
 ## 6. Versão 2 (fica pra depois)
 
