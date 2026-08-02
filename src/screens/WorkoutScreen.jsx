@@ -382,12 +382,12 @@ function ExerciseItem({ exercise, onOpenCarga, onUpdate, onDelete }) {
           value={exercise.setsReps}
           onChange={(e) => onUpdate({ setsReps: e.target.value })}
           placeholder="Séries x reps"
-          className="min-h-8 flex-1 rounded-lg border border-ritmo-pink-light bg-ritmo-bg px-2 text-xs text-ritmo-text outline-none focus:border-ritmo-pink"
+          className="min-h-8 min-w-0 flex-1 rounded-lg border border-ritmo-pink-light bg-ritmo-bg px-2 text-xs text-ritmo-text outline-none focus:border-ritmo-pink"
         />
         <button
           type="button"
           onClick={onOpenCarga}
-          className="flex min-h-8 shrink-0 items-center whitespace-nowrap rounded-full bg-ritmo-pink-tint px-3 text-xs font-medium text-ritmo-pink-deep transition-colors hover:bg-ritmo-pink-light"
+          className="flex min-h-8 max-w-[40%] shrink-0 items-center justify-center truncate whitespace-nowrap rounded-full bg-ritmo-pink-tint px-3 text-xs font-medium text-ritmo-pink-deep transition-colors hover:bg-ritmo-pink-light"
         >
           {latest ? latest.weight : "+ carga"}
         </button>
