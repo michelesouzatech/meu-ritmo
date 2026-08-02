@@ -1,6 +1,6 @@
 // Service worker do Meu Ritmo.
 // Suba o VERSION sempre que quiser forçar a limpeza dos caches antigos.
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL_CACHE = `meuritmo-shell-${VERSION}`;
 const ASSET_CACHE = `meuritmo-assets-${VERSION}`;
 
