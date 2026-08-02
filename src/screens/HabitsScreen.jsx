@@ -153,30 +153,32 @@ export function habitProgress(habit) {
     };
   }
 
-  const elapsed = Math.max(0, daysBetween(habit.startDate, today));
-  const isFinished = elapsed >= habit.periodDays;
-  const currentDay = Math.min(elapsed + 1, habit.periodDays);
-  const daysRemaining = Math.max(0, habit.periodDays - currentDay);
+  const daysSinceStart = daysBetween(habit.startDate, today);
+  const notStarted = daysSinceStart < 0;
+  const elapsed = Math.max(0, daysSinceStart);
+  const isFinished = !notStarted && elapsed >= habit.periodDays;
+  const currentDay = notStarted ? 0 : Math.min(elapsed + 1, habit.periodDays);
+  const daysRemaining = notStarted ? habit.periodDays : Math.max(0, habit.periodDays - currentDay);
   const ratio = habit.completions.length / habit.periodDays;
-  return { isDaily: false, currentDay, daysRemaining, isFinished, doneToday, ratio };
+  return { isDaily: false, currentDay, daysRemaining, isFinished, notStarted, doneToday, ratio };
 }
 
 function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
   const progress = habitProgress(habit);
-  const { isFinished } = progress;
+  const { isFinished, notStarted } = progress;
   const today = todayISO();
   const isEditingToday = date === today;
   const doneOnDate = habit.completions.includes(date);
   const canEdit = date <= today && (!habit.periodDays || date >= habit.startDate);
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm shadow-ritmo-text/5">
+    <div className="rounded-2xl bg-white p-3.5 shadow-sm shadow-ritmo-text/5">
       {!isEditingToday && (
         <p className="mb-2 text-xs font-medium text-ritmo-pink-deep">
           {formatDatePtBr(date)}
         </p>
       )}
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <button
           type="button"
           onClick={() => canEdit && onToggleDate(habit.id, date)}
@@ -191,18 +193,7 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
           {doneOnDate && <Check size={16} strokeWidth={3} />}
         </button>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <p className="min-w-0 flex-1 truncate text-sm font-medium text-ritmo-text">
-              {habit.name}
-            </p>
-            <span className="ritmo-glass-pill shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-lilac-ink">
-              {progress.isDaily
-                ? "diário"
-                : isFinished
-                  ? "ciclo concluído"
-                  : `dia ${progress.currentDay} de ${habit.periodDays}`}
-            </span>
-          </div>
+          <p className="truncate text-sm font-medium text-ritmo-text">{habit.name}</p>
           {progress.isDaily ? (
             <p className="mt-0.5 flex items-center gap-1 text-xs text-ritmo-text/50">
               {progress.streak > 0 ? (
@@ -214,6 +205,10 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
               ) : (
                 "Nenhum dia seguido ainda"
               )}
+            </p>
+          ) : notStarted ? (
+            <p className="mt-0.5 text-xs text-ritmo-text/50">
+              Começa em {formatDatePtBr(habit.startDate)}
             </p>
           ) : (
             <>
@@ -230,33 +225,44 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
             </>
           )}
         </div>
-      </div>
-      <div className="mt-3 flex justify-end gap-2">
-        {isFinished && (
-          <button
-            type="button"
-            onClick={() => onRestart(habit.id)}
-            className="flex min-h-9 items-center gap-1 rounded-full bg-ritmo-pink-light/60 px-3 text-xs font-medium text-ritmo-pink-deep transition-colors hover:bg-ritmo-pink-light"
-          >
-            <RotateCcw size={13} /> Novo ciclo
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => onEdit(habit)}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep"
-          aria-label="Editar hábito"
-        >
-          <Pencil size={16} />
-        </button>
-        <button
-          type="button"
-          onClick={() => onDelete(habit.id)}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep"
-          aria-label="Excluir hábito"
-        >
-          <Trash2 size={16} />
-        </button>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-lilac-ink">
+            {progress.isDaily
+              ? "diário"
+              : notStarted
+                ? "em breve"
+                : isFinished
+                  ? "ciclo concluído"
+                  : `dia ${progress.currentDay} de ${habit.periodDays}`}
+          </span>
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => onEdit(habit)}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep"
+              aria-label="Editar hábito"
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(habit.id)}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep"
+              aria-label="Excluir hábito"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+          {isFinished && (
+            <button
+              type="button"
+              onClick={() => onRestart(habit.id)}
+              className="flex min-h-7 items-center gap-1 rounded-full bg-ritmo-pink-light/60 px-2.5 text-[11px] font-medium text-ritmo-pink-deep transition-colors hover:bg-ritmo-pink-light"
+            >
+              <RotateCcw size={12} /> Novo ciclo
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
