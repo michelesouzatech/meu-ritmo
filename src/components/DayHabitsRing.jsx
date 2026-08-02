@@ -6,7 +6,7 @@ function DayHabitsRing({ done, total }) {
   const plural = total !== 1;
 
   return (
-    <div className="mb-6 flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm shadow-ritmo-text/5">
+    <div className="ritmo-glass mb-6 flex items-center gap-4 rounded-2xl p-4">
       <div className="relative flex h-24 w-24 shrink-0 items-center justify-center">
         <HabitRing progress={percent} size={96} stroke={10} />
         <span className="absolute text-lg font-semibold text-ritmo-pink-deep">{pct}%</span>

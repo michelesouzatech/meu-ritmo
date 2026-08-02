@@ -195,7 +195,7 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
             <p className="min-w-0 flex-1 truncate text-sm font-medium text-ritmo-text">
               {habit.name}
             </p>
-            <span className="shrink-0 rounded-full bg-ritmo-pink-light px-2 py-1 text-xs font-medium text-ritmo-pink-deep">
+            <span className="ritmo-glass-pill shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-lilac-ink">
               {progress.isDaily
                 ? "diário"
                 : isFinished

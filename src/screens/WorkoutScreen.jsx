@@ -463,11 +463,13 @@ function WorkoutGroupCard({
         className="flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl p-4 text-left"
       >
         <span className="text-sm font-semibold text-ritmo-pink-deep">{group}</span>
-        <span className="flex shrink-0 items-center gap-2 text-xs text-ritmo-text/40">
-          {exercises.length} exercício{exercises.length > 1 ? "s" : ""}
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-lilac-ink">
+            {exercises.length} exercício{exercises.length > 1 ? "s" : ""}
+          </span>
           <ChevronDown
             size={16}
-            className={`transition-transform ${open ? "rotate-180" : ""}`}
+            className={`text-ritmo-text/40 transition-transform ${open ? "rotate-180" : ""}`}
           />
         </span>
       </button>

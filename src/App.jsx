@@ -371,7 +371,12 @@ function App() {
   }
 
   return (
-    <div className="min-h-full flex justify-center bg-ritmo-bg">
+    <div className="min-h-full flex justify-center">
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-ritmo-bg">
+        <div className="absolute -left-16 -top-24 h-72 w-72 rounded-full bg-[#ff8ec8]/20 blur-3xl" />
+        <div className="absolute -right-20 top-1/3 h-64 w-64 rounded-full bg-[#c9a6ff]/20 blur-3xl" />
+        <div className="absolute -left-14 bottom-16 h-72 w-72 rounded-full bg-[#ffc2e3]/25 blur-3xl" />
+      </div>
       <div className="w-full max-w-md px-5 pt-8 pb-28">
         {saveError && (
           <div className="mb-4 rounded-xl bg-ritmo-pink-light px-3 py-2 text-xs text-ritmo-pink-deep">

@@ -198,10 +198,12 @@ function HomeScreen({
         </div>
       </header>
 
-      <section className="mb-5 rounded-2xl bg-gradient-to-br from-ritmo-pink-deep to-ritmo-pink px-4 py-3 text-white shadow-md shadow-ritmo-pink/30">
-        <p className="text-xs opacity-90">Seu resumo de hoje</p>
+      <section className="ritmo-glass mb-5 rounded-2xl px-4 py-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-ritmo-pink-deep/80">
+          Seu resumo de hoje
+        </p>
         {lines.map((line, i) => (
-          <p key={i} className="mt-1 text-xs font-medium leading-snug">
+          <p key={i} className="mt-1.5 text-xs font-medium leading-snug text-ritmo-text">
             {line}
           </p>
         ))}
