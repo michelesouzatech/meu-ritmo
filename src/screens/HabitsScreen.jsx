@@ -1,15 +1,33 @@
 import { useState } from "react";
-import { Check, Trash2, RotateCcw, Flame, ChevronDown } from "lucide-react";
+import { Check, Trash2, RotateCcw, Flame, ChevronDown, Pencil, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import Sheet from "../components/Sheet.jsx";
 import AddButton from "../components/AddButton.jsx";
 import HabitCalendar from "../components/HabitCalendar.jsx";
 import HabitWeekStrip from "../components/HabitWeekStrip.jsx";
 import { todayISO, daysBetween, toISODate, formatDatePtBr } from "../lib/date.js";
 
-export function HabitFormSheet({ onClose, onSave }) {
-  const [name, setName] = useState("");
-  const [hasCycle, setHasCycle] = useState(false);
-  const [periodDays, setPeriodDays] = useState(7);
+export function HabitFormSheet({ habit, onClose, onSave }) {
+  const isEditing = !!habit;
+  const [name, setName] = useState(habit?.name ?? "");
+  const [hasCycle, setHasCycle] = useState(!!habit?.periodDays);
+  const [periodDays, setPeriodDays] = useState(habit?.periodDays ?? 7);
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -18,14 +36,13 @@ export function HabitFormSheet({ onClose, onSave }) {
     onSave({
       name: name.trim(),
       periodDays: hasCycle ? Number(periodDays) : null,
-      startDate: todayISO(),
-      completions: [],
+      ...(isEditing ? {} : { startDate: todayISO(), completions: [] }),
     });
     onClose();
   }
 
   return (
-    <Sheet title="Novo hábito" onClose={onClose}>
+    <Sheet title={isEditing ? "Editar hábito" : "Novo hábito"} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium text-ritmo-text/70">
@@ -76,7 +93,7 @@ export function HabitFormSheet({ onClose, onSave }) {
           type="submit"
           className="min-h-11 w-full rounded-full bg-gradient-to-br from-ritmo-pink-deep to-ritmo-pink text-sm font-semibold text-white shadow-md shadow-ritmo-pink/30 transition-transform active:scale-[0.98]"
         >
-          Criar hábito
+          {isEditing ? "Salvar alterações" : "Criar hábito"}
         </button>
       </form>
     </Sheet>
@@ -129,7 +146,7 @@ export function habitProgress(habit) {
   return { isDaily: false, currentDay, daysRemaining, isFinished, doneToday, ratio };
 }
 
-function HabitCard({ habit, date, onToggleDate, onDelete, onRestart }) {
+function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
   const progress = habitProgress(habit);
   const { isFinished } = progress;
   const today = todayISO();
@@ -211,12 +228,55 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart }) {
         )}
         <button
           type="button"
+          onClick={() => onEdit(habit)}
+          className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep"
+          aria-label="Editar hábito"
+        >
+          <Pencil size={16} />
+        </button>
+        <button
+          type="button"
           onClick={() => onDelete(habit.id)}
           className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep"
           aria-label="Excluir hábito"
         >
           <Trash2 size={16} />
         </button>
+      </div>
+    </div>
+  );
+}
+
+function SortableHabitItem({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: habit.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-start gap-1">
+      <button
+        type="button"
+        aria-label="Arrastar para reordenar"
+        className="mt-2.5 flex h-11 w-7 shrink-0 touch-none items-center justify-center rounded-lg text-ritmo-text/25 transition-colors hover:bg-ritmo-pink-tint hover:text-ritmo-pink-deep active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical size={16} />
+      </button>
+      <div className="min-w-0 flex-1">
+        <HabitCard
+          habit={habit}
+          date={date}
+          onToggleDate={onToggleDate}
+          onDelete={onDelete}
+          onRestart={onRestart}
+          onEdit={onEdit}
+        />
       </div>
     </div>
   );
@@ -262,8 +322,22 @@ function DateDropdown({ selectedDate, onSelectDate, habits }) {
   );
 }
 
-function HabitsScreen({ habits, onToggleDate, onDelete, onRestart, onAdd }) {
+function HabitsScreen({ habits, onToggleDate, onDelete, onRestart, onEdit, onReorder, onAdd }) {
   const [selectedDate, setSelectedDate] = useState(todayISO());
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(event) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = habits.map((h) => h.id);
+    const oldIndex = ids.indexOf(active.id);
+    const newIndex = ids.indexOf(over.id);
+    onReorder(arrayMove(ids, oldIndex, newIndex));
+  }
 
   return (
     <div>
@@ -295,18 +369,23 @@ function HabitsScreen({ habits, onToggleDate, onDelete, onRestart, onAdd }) {
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
           />
-          <div className="space-y-3">
-            {habits.map((habit) => (
-              <HabitCard
-                key={habit.id}
-                habit={habit}
-                date={selectedDate}
-                onToggleDate={onToggleDate}
-                onDelete={onDelete}
-                onRestart={onRestart}
-              />
-            ))}
-          </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={habits.map((h) => h.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-3">
+                {habits.map((habit) => (
+                  <SortableHabitItem
+                    key={habit.id}
+                    habit={habit}
+                    date={selectedDate}
+                    onToggleDate={onToggleDate}
+                    onDelete={onDelete}
+                    onRestart={onRestart}
+                    onEdit={onEdit}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         </>
       )}
     </div>

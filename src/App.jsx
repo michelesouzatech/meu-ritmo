@@ -50,6 +50,8 @@ function App() {
   // Guarda a lista atual pra calcular posições sem depender do render.
   const exercisesRef = useRef([]);
   exercisesRef.current = workout.exercises;
+  const habitsRef = useRef([]);
+  habitsRef.current = habits;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -149,8 +151,22 @@ function App() {
 
   function addHabit(data) {
     const habit = { id: crypto.randomUUID(), ...data };
+    const position = habitsRef.current.length;
     setHabits((prev) => [...prev, habit]);
-    save(() => db.insertHabit(userId, habit));
+    save(() => db.insertHabit(userId, habit, position));
+  }
+
+  function editHabit(id, data) {
+    setHabits((prev) => prev.map((h) => (h.id === id ? { ...h, ...data } : h)));
+    save(() => db.updateHabit(id, data));
+  }
+
+  function reorderHabits(orderedIds) {
+    const byId = new Map(habitsRef.current.map((h) => [h.id, h]));
+    const reordered = orderedIds.map((id) => byId.get(id));
+    setHabits(reordered);
+    const pairs = reordered.map((h, position) => ({ id: h.id, position }));
+    save(() => db.saveHabitPositions(pairs));
   }
 
   function toggleHabitDate(id, date) {
@@ -388,6 +404,8 @@ function App() {
             onToggleDate={toggleHabitDate}
             onDelete={deleteHabit}
             onRestart={restartHabit}
+            onEdit={(habit) => setSheet({ type: "editHabit", habit })}
+            onReorder={reorderHabits}
             onAdd={() => setSheet("habit")}
           />
         )}
@@ -428,6 +446,13 @@ function App() {
       )}
       {sheet === "habit" && (
         <HabitFormSheet onClose={() => setSheet(null)} onSave={addHabit} />
+      )}
+      {sheet?.type === "editHabit" && (
+        <HabitFormSheet
+          habit={sheet.habit}
+          onClose={() => setSheet(null)}
+          onSave={(data) => editHabit(sheet.habit.id, data)}
+        />
       )}
       {sheet === "exercise" && (
         <ExerciseFormSheet

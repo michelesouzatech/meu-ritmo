@@ -17,6 +17,66 @@ function StatCard({ label, value }) {
   );
 }
 
+function BodyStatsCard({ user }) {
+  const [weight, setWeight] = useState(user?.user_metadata?.weight_kg ?? "");
+  const [height, setHeight] = useState(user?.user_metadata?.height_cm ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function saveIfChanged(field, value, original) {
+    if (String(value) === String(original ?? "")) return;
+    setError(null);
+    setSaving(true);
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { [field]: value === "" ? null : Number(value) },
+    });
+    if (updateError) setError("Não deu pra salvar agora. Tenta de novo em instantes.");
+    setSaving(false);
+  }
+
+  return (
+    <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm shadow-ritmo-text/5">
+      <p className="mb-3 text-sm font-medium text-ritmo-text">Peso e altura</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-ritmo-text/50">
+            Peso (kg)
+          </label>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.1"
+            min="0"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            onBlur={() => saveIfChanged("weight_kg", weight, user?.user_metadata?.weight_kg)}
+            placeholder="Ex: 62.5"
+            className="min-h-11 w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 text-sm text-ritmo-text outline-none focus:border-ritmo-pink"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-ritmo-text/50">
+            Altura (cm)
+          </label>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="1"
+            min="0"
+            value={height}
+            onChange={(e) => setHeight(e.target.value)}
+            onBlur={() => saveIfChanged("height_cm", height, user?.user_metadata?.height_cm)}
+            placeholder="Ex: 165"
+            className="min-h-11 w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 text-sm text-ritmo-text outline-none focus:border-ritmo-pink"
+          />
+        </div>
+      </div>
+      {saving && <p className="mt-2 text-xs text-ritmo-text/40">Salvando...</p>}
+      {error && <p className="mt-2 text-xs text-ritmo-pink-deep">{error}</p>}
+    </div>
+  );
+}
+
 function ProfileScreen({ user, tasks, habits, workout, bodyFat, calendar, onLogout, onNavigate }) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -102,6 +162,8 @@ function ProfileScreen({ user, tasks, habits, workout, bodyFat, calendar, onLogo
         </h1>
         <p className="mt-0.5 text-sm text-ritmo-text/50">{user?.email}</p>
       </header>
+
+      <BodyStatsCard user={user} />
 
       <div className="mb-6 grid grid-cols-2 gap-3">
         <StatCard label="tarefas concluídas" value={doneTasks} />

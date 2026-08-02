@@ -54,6 +54,13 @@ function taskColumns(data) {
   return out;
 }
 
+function habitColumns(data) {
+  const out = {};
+  if ("name" in data) out.name = data.name;
+  if ("periodDays" in data) out.period_days = data.periodDays ?? null;
+  return out;
+}
+
 function exerciseColumns(data) {
   const out = {};
   if ("group" in data) out.group_name = data.group ?? "";
@@ -98,7 +105,7 @@ export async function loadAll(userId) {
         .from("habits")
         .select("*")
         .eq("user_id", userId)
-        .order("created_at")
+        .order("position")
         .then(unwrap),
       supabase
         .from("habit_completions")
@@ -168,7 +175,7 @@ export const removeTask = (id) =>
 
 // ---------- hábitos ----------
 
-export const insertHabit = (userId, habit) =>
+export const insertHabit = (userId, habit, position) =>
   supabase
     .from("habits")
     .insert({
@@ -177,8 +184,18 @@ export const insertHabit = (userId, habit) =>
       name: habit.name,
       period_days: habit.periodDays ?? null,
       start_date: habit.startDate,
+      position,
     })
     .then(unwrap);
+
+export const updateHabit = (id, patch) =>
+  supabase.from("habits").update(habitColumns(patch)).eq("id", id).then(unwrap);
+
+export async function saveHabitPositions(pairs) {
+  for (const { id, position } of pairs) {
+    unwrap(await supabase.from("habits").update({ position }).eq("id", id));
+  }
+}
 
 export const insertCompletion = (userId, habitId, date) =>
   supabase
@@ -353,12 +370,13 @@ export async function uploadLocalData(userId, workoutId, local) {
   if (habits.length > 0) {
     unwrap(
       await supabase.from("habits").insert(
-        habits.map((habit) => ({
+        habits.map((habit, position) => ({
           id: habit.id,
           user_id: userId,
           name: habit.name,
           period_days: habit.periodDays ?? null,
           start_date: habit.startDate,
+          position,
         })),
       ),
     );
