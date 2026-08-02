@@ -8,10 +8,10 @@
 | Tema | Decisão |
 |---|---|
 | Quem usa | Só a Michele, uso pessoal |
-| Login | Sim, com Google — entra só na fase final |
+| Login | E-mail e senha via Supabase Auth (com "Esqueci minha senha"). A conexão com o Google Agenda é separada do login — liga a conta Google depois de já estar logada |
 | Dispositivo | Mobile-first (uso principal no celular, mas funciona no computador também) |
 | Dados | Começa salvando no navegador (localStorage); banco de dados de verdade (Supabase) entra na fase final |
-| Identidade visual | Pink puro, inspiração Barbie — pink `#E0218A` (principal), pink profundo `#B0116A` (contraste/gradiente), pink suave `#FFD9EC` (fundos de destaque) + fundo `#FFF7FB` + texto `#241220`. Fonte: Poppins |
+| Identidade visual | Pink puro, inspiração Barbie — pink `#E0218A` (principal), pink profundo `#B0116A` (contraste/gradiente), pink suave `#FFD9EC` (fundos de destaque) + lilás bem clarinho `#F4EBFF` (informação secundária: selos, contadores, aba ativa) + fundo `#FFF7FB` + texto `#241220`. Fonte: Poppins. Superfícies-chave (resumo do dia, anel de progresso, navegação, selos) usam um material "vidro líquido" — painel translúcido com desfoque de fundo — sobre manchas suaves de cor |
 | Referência de layout | Prints de planners com cards arredondados, calendário em destaque, navegação inferior com botão de ação flutuante |
 
 ## 2. Telas do app
@@ -43,7 +43,7 @@ Medição corporal: data, % de gordura
 Insight: período analisado, resumo gerado, sugestões geradas
 ```
 
-Cada tarefa, hábito e treino pertence só à Michele (login pessoal via Google, sem compartilhamento).
+Cada tarefa, hábito e treino pertence só à Michele (login pessoal por e-mail e senha, sem compartilhamento).
 
 ## 5. Fases de construção
 
@@ -59,6 +59,9 @@ Cada tarefa, hábito e treino pertence só à Michele (login pessoal via Google,
 - [x] **Ajustes de uso no celular** — Corrigido o zoom automático do iPhone ao tocar num campo de texto: o Safari amplia a tela sempre que a fonte do campo é menor que 16px e não desfaz o zoom depois. Os campos passaram a usar 16px em telas de toque (`src/index.css`), o que resolve na origem sem precisar bloquear a pinça pra ampliar.
 - [x] **Hábitos: editar, reordenar e escolher início do ciclo** — Cada hábito pode ser editado (nome, ciclo, data de início) por um lápis no card, e a lista pode ser reorganizada por arrastar — mesmo padrão de drag-and-drop já usado nos exercícios do Treino. Ao criar um hábito com ciclo, dá pra escolher a data de início em vez de sempre começar no dia da criação.
 - [x] **Home mais enxuta e resumo inteligente do dia** — A lista de hábitos saiu da tela inicial (ficou só na tela de Hábitos); no lugar entrou um anel de progresso mostrando o % concluído no dia. O card "Seu resumo de hoje" virou um resumo curto e priorizado — tarefa mais urgente, hábitos pendentes com nome encurtado (ex: "cardio 30 min" → "cardio", "alimentação 100% limpa" → "alimentação 100%") e avisos sobre compromissos de hoje e de amanhã na agenda — em vez de um texto único e genérico.
+- [x] **Login por e-mail e senha** — Troca o login (antes só Google) por e-mail e senha via Supabase Auth, com "Esqueci minha senha" pra quem criou a conta na época do login antigo definir uma senha nova. A conexão com o Google Agenda passou a ser independente do login — dá pra conectar e reconectar sem trocar de sessão.
+- [x] **Perfil na barra de navegação** — "Perfil" virou um item fixo do menu inferior, acessível de qualquer tela (antes só abria pelo avatar na Home).
+- [x] **Lilás claro + liquid glass** — Terceira cor (lilás bem clarinho, `#F4EBFF`, derivado do mesmo tom do pink claro só girando o matiz) marcando informação secundária: selo de status do hábito, contador de exercícios da ficha de treino e a aba ativa da navegação. Essas superfícies, mais o card de resumo do dia e o anel de progresso, ganharam o material "vidro líquido" — painel translúcido, desfoque de fundo, um fio de luz na borda — sobre manchas suaves de cor adicionadas ao fundo do app pra dar profundidade ao desfoque.
 
 ## 6. Versão 2 (fica pra depois)
 
