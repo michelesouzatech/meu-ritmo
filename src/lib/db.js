@@ -71,6 +71,15 @@ const toRunPlan = (r) => ({
   archived: r.archived,
 });
 
+const toJournalEntry = (r) => ({
+  id: r.id,
+  date: r.entry_date,
+  activityType: r.activity_type,
+  activityLabel: r.activity_label ?? "",
+  feeling: r.feeling,
+  notes: r.notes ?? "",
+});
+
 const toRunSession = (r) => ({
   id: r.id,
   planId: r.plan_id,
@@ -139,6 +148,16 @@ function runPlanColumns(data) {
   return out;
 }
 
+function journalColumns(data) {
+  const out = {};
+  if ("date" in data) out.entry_date = data.date;
+  if ("activityType" in data) out.activity_type = data.activityType;
+  if ("activityLabel" in data) out.activity_label = data.activityLabel ?? "";
+  if ("feeling" in data) out.feeling = data.feeling;
+  if ("notes" in data) out.notes = data.notes ?? "";
+  return out;
+}
+
 function runSessionColumns(data) {
   const out = {};
   if ("planId" in data) out.plan_id = data.planId ?? null;
@@ -184,6 +203,7 @@ export async function loadAll(userId) {
     raceRows,
     runPlanRows,
     runSessionRows,
+    journalRows,
   ] = await Promise.all([
       supabase
         .from("tasks")
@@ -239,6 +259,12 @@ export async function loadAll(userId) {
         .eq("user_id", userId)
         .order("session_date")
         .then(unwrap),
+      supabase
+        .from("workout_journal")
+        .select("*")
+        .eq("user_id", userId)
+        .order("entry_date")
+        .then(unwrap),
     ]);
 
   const habits = habitRows.map(toHabit);
@@ -269,6 +295,7 @@ export async function loadAll(userId) {
       plans: runPlanRows.map(toRunPlan),
       sessions: runSessionRows.map(toRunSession),
     },
+    journal: journalRows.map(toJournalEntry),
   };
 }
 
@@ -507,6 +534,20 @@ export const updateRunSession = (id, patch) =>
 
 export const removeRunSession = (id) =>
   supabase.from("run_sessions").delete().eq("id", id).then(unwrap);
+
+// ---------- diário de treino ----------
+
+export const insertJournalEntry = (userId, entry) =>
+  supabase
+    .from("workout_journal")
+    .insert({ id: entry.id, user_id: userId, ...journalColumns(entry) })
+    .then(unwrap);
+
+export const updateJournalEntry = (id, patch) =>
+  supabase.from("workout_journal").update(journalColumns(patch)).eq("id", id).then(unwrap);
+
+export const removeJournalEntry = (id) =>
+  supabase.from("workout_journal").delete().eq("id", id).then(unwrap);
 
 // ---------- mudança do navegador pro banco ----------
 

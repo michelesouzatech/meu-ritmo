@@ -1,24 +1,29 @@
 import { useState } from "react";
-import { Dumbbell, Footprints } from "lucide-react";
+import { Dumbbell, Footprints, NotebookPen } from "lucide-react";
 import GymTab from "./GymTab.jsx";
 import RunningTab from "./RunningTab.jsx";
+import JournalTab from "./JournalTab.jsx";
 
 const TAB_KEY = "meuritmo:workout-tab";
 
+const TABS = [
+  { id: "gym", label: "Força", icon: Dumbbell },
+  { id: "running", label: "Corrida", icon: Footprints },
+  { id: "journal", label: "Diário", icon: NotebookPen },
+];
+
+const TAB_IDS = TABS.map((t) => t.id);
+
 // Lembra em qual sub-aba a pessoa estava, igual a agenda já faz com
-// semana/mês. Sem localStorage, abre em Musculação.
+// semana/mês. Sem localStorage, abre em Força.
 function readSavedTab() {
   try {
-    return localStorage.getItem(TAB_KEY) === "running" ? "running" : "gym";
+    const saved = localStorage.getItem(TAB_KEY);
+    return TAB_IDS.includes(saved) ? saved : "gym";
   } catch {
     return "gym";
   }
 }
-
-const TABS = [
-  { id: "gym", label: "Musculação", icon: Dumbbell },
-  { id: "running", label: "Corrida", icon: Footprints },
-];
 
 function SubTabs({ active, onChange }) {
   return (
@@ -29,11 +34,11 @@ function SubTabs({ active, onChange }) {
           type="button"
           onClick={() => onChange(id)}
           aria-pressed={active === id}
-          className={`flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-full text-xs font-semibold transition-colors ${
+          className={`flex min-h-9 flex-1 items-center justify-center gap-1 rounded-full text-[11px] font-semibold transition-colors ${
             active === id ? "ritmo-glass-pill text-ritmo-lilac-ink" : "text-ritmo-muted"
           }`}
         >
-          <Icon size={15} />
+          <Icon size={14} />
           {label}
         </button>
       ))}
@@ -41,7 +46,7 @@ function SubTabs({ active, onChange }) {
   );
 }
 
-function WorkoutScreen({ gym, running }) {
+function WorkoutScreen({ gym, running, journal }) {
   const [tab, setTab] = useState(readSavedTab);
 
   function changeTab(next) {
@@ -59,7 +64,9 @@ function WorkoutScreen({ gym, running }) {
 
       <SubTabs active={tab} onChange={changeTab} />
 
-      {tab === "gym" ? <GymTab {...gym} /> : <RunningTab {...running} />}
+      {tab === "gym" && <GymTab {...gym} />}
+      {tab === "running" && <RunningTab {...running} />}
+      {tab === "journal" && <JournalTab {...journal} />}
     </div>
   );
 }

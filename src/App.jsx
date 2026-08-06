@@ -15,6 +15,7 @@ import {
   RunPlanFormSheet,
   RunSessionFormSheet,
 } from "./screens/runSheets.jsx";
+import { JournalEntryFormSheet } from "./screens/journalSheets.jsx";
 import ProfileScreen from "./screens/ProfileScreen.jsx";
 import LoginScreen from "./screens/LoginScreen.jsx";
 import ResetPasswordScreen from "./screens/ResetPasswordScreen.jsx";
@@ -27,6 +28,7 @@ import { supabase } from "./lib/supabase.js";
 import { clearGoogleToken, connectGoogleCalendar } from "./lib/googleCalendar.js";
 import { useGoogleCalendar } from "./hooks/useGoogleCalendar.js";
 import { useRunning } from "./hooks/useRunning.js";
+import { useJournal } from "./hooks/useJournal.js";
 import * as db from "./lib/db.js";
 
 const emptyWorkout = { createdAt: null, photoName: null, photoDataUrl: null, exercises: [] };
@@ -57,6 +59,8 @@ function App() {
   const [workout, setWorkout] = useState(emptyWorkout);
   const [bodyFat, setBodyFat] = useState([]);
   const [runningData, setRunningData] = useState(null);
+  const [journalData, setJournalData] = useState(null);
+  const [journalDate, setJournalDate] = useState(todayISO);
 
   // Guarda a lista atual pra calcular posições sem depender do render.
   const exercisesRef = useRef([]);
@@ -122,6 +126,7 @@ function App() {
         setWorkout(data.workout);
         setBodyFat(data.bodyFat);
         setRunningData(data.running);
+        setJournalData(data.journal);
       } catch {
         if (!cancelled) setSaveError(true);
       } finally {
@@ -144,6 +149,7 @@ function App() {
   }, []);
 
   const running = useRunning({ userId, save, initial: runningData });
+  const journal = useJournal({ userId, save, initial: journalData });
 
   function addTask(data) {
     const task = { id: crypto.randomUUID(), done: false, ...data };
@@ -483,6 +489,15 @@ function App() {
               onEditSession: (session) => setSheet({ type: "runSession", session }),
               onDeleteSession: running.deleteSession,
             }}
+            journal={{
+              entries: journal.entries,
+              selectedDate: journalDate,
+              onSelectDate: setJournalDate,
+              onAdd: (dateISO) =>
+                setSheet({ type: "journal", entry: null, dateISO }),
+              onEdit: (entry) => setSheet({ type: "journal", entry }),
+              onDelete: journal.deleteEntry,
+            }}
           />
         )}
         {tab === "profile" && (
@@ -582,6 +597,19 @@ function App() {
               : running.addSession(data)
           }
           onDelete={running.deleteSession}
+        />
+      )}
+      {sheet?.type === "journal" && (
+        <JournalEntryFormSheet
+          entry={sheet.entry}
+          dateISO={sheet.dateISO}
+          groups={[...new Set(workout.exercises.map((e) => e.group))]}
+          allEntries={journal.entries}
+          onClose={() => setSheet(null)}
+          onSave={(data) =>
+            sheet.entry ? journal.editEntry(sheet.entry.id, data) : journal.addEntry(data)
+          }
+          onDelete={journal.deleteEntry}
         />
       )}
     </div>
