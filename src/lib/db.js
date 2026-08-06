@@ -42,6 +42,45 @@ const toCargaLog = (r) => ({ id: r.id, date: r.log_date, weight: r.weight });
 
 const toBodyFat = (r) => ({ id: r.id, date: r.measured_on, percent: Number(r.percent) });
 
+const numberOrNull = (v) => (v == null ? null : Number(v));
+
+const toRace = (r) => ({
+  id: r.id,
+  name: r.name,
+  date: r.race_date,
+  time: r.start_time ? r.start_time.slice(0, 5) : "",
+  location: r.location ?? "",
+  distanceKm: Number(r.distance_km),
+  category: r.category ?? "",
+  goalPace: numberOrNull(r.goal_pace_seconds),
+  resultTime: numberOrNull(r.result_time_seconds),
+  rankOverall: numberOrNull(r.rank_overall),
+  rankCategory: numberOrNull(r.rank_category),
+  notes: r.notes ?? "",
+  calendarEventId: r.calendar_event_id ?? null,
+});
+
+const toRunPlan = (r) => ({
+  id: r.id,
+  raceId: r.race_id,
+  name: r.name,
+  weeklyTarget: r.weekly_target,
+  goalPace: numberOrNull(r.goal_pace_seconds),
+  startDate: r.start_date,
+  endDate: r.end_date,
+  archived: r.archived,
+});
+
+const toRunSession = (r) => ({
+  id: r.id,
+  planId: r.plan_id,
+  date: r.session_date,
+  distanceKm: numberOrNull(r.distance_km),
+  duration: numberOrNull(r.duration_seconds),
+  kind: r.kind ?? "",
+  notes: r.notes ?? "",
+});
+
 // ---------- app -> banco ----------
 
 function taskColumns(data) {
@@ -71,6 +110,46 @@ function exerciseColumns(data) {
   return out;
 }
 
+function raceColumns(data) {
+  const out = {};
+  if ("name" in data) out.name = data.name;
+  if ("date" in data) out.race_date = data.date;
+  if ("time" in data) out.start_time = data.time || null;
+  if ("location" in data) out.location = data.location ?? "";
+  if ("distanceKm" in data) out.distance_km = data.distanceKm;
+  if ("category" in data) out.category = data.category ?? "";
+  if ("goalPace" in data) out.goal_pace_seconds = data.goalPace ?? null;
+  if ("resultTime" in data) out.result_time_seconds = data.resultTime ?? null;
+  if ("rankOverall" in data) out.rank_overall = data.rankOverall ?? null;
+  if ("rankCategory" in data) out.rank_category = data.rankCategory ?? null;
+  if ("notes" in data) out.notes = data.notes ?? "";
+  if ("calendarEventId" in data) out.calendar_event_id = data.calendarEventId ?? null;
+  return out;
+}
+
+function runPlanColumns(data) {
+  const out = {};
+  if ("raceId" in data) out.race_id = data.raceId ?? null;
+  if ("name" in data) out.name = data.name;
+  if ("weeklyTarget" in data) out.weekly_target = data.weeklyTarget;
+  if ("goalPace" in data) out.goal_pace_seconds = data.goalPace ?? null;
+  if ("startDate" in data) out.start_date = data.startDate;
+  if ("endDate" in data) out.end_date = data.endDate ?? null;
+  if ("archived" in data) out.archived = !!data.archived;
+  return out;
+}
+
+function runSessionColumns(data) {
+  const out = {};
+  if ("planId" in data) out.plan_id = data.planId ?? null;
+  if ("date" in data) out.session_date = data.date;
+  if ("distanceKm" in data) out.distance_km = data.distanceKm ?? null;
+  if ("duration" in data) out.duration_seconds = data.duration ?? null;
+  if ("kind" in data) out.kind = data.kind ?? "";
+  if ("notes" in data) out.notes = data.notes ?? "";
+  return out;
+}
+
 // ---------- leitura ----------
 
 async function ensureWorkoutRow(userId) {
@@ -94,8 +173,18 @@ async function signedPhotoUrl(path) {
 export async function loadAll(userId) {
   const workoutRow = await ensureWorkoutRow(userId);
 
-  const [taskRows, habitRows, completionRows, exerciseRows, cargaRows, bodyFatRows, photoUrl] =
-    await Promise.all([
+  const [
+    taskRows,
+    habitRows,
+    completionRows,
+    exerciseRows,
+    cargaRows,
+    bodyFatRows,
+    photoUrl,
+    raceRows,
+    runPlanRows,
+    runSessionRows,
+  ] = await Promise.all([
       supabase
         .from("tasks")
         .select("*")
@@ -132,6 +221,24 @@ export async function loadAll(userId) {
         .order("measured_on")
         .then(unwrap),
       signedPhotoUrl(workoutRow.photo_path),
+      supabase
+        .from("races")
+        .select("*")
+        .eq("user_id", userId)
+        .order("race_date")
+        .then(unwrap),
+      supabase
+        .from("run_plans")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at")
+        .then(unwrap),
+      supabase
+        .from("run_sessions")
+        .select("*")
+        .eq("user_id", userId)
+        .order("session_date")
+        .then(unwrap),
     ]);
 
   const habits = habitRows.map(toHabit);
@@ -157,6 +264,11 @@ export async function loadAll(userId) {
       exercises,
     },
     bodyFat: bodyFatRows.map(toBodyFat),
+    running: {
+      races: raceRows.map(toRace),
+      plans: runPlanRows.map(toRunPlan),
+      sessions: runSessionRows.map(toRunSession),
+    },
   };
 }
 
@@ -347,6 +459,54 @@ export const insertBodyFat = (userId, entry) =>
 
 export const removeBodyFat = (id) =>
   supabase.from("body_fat").delete().eq("id", id).then(unwrap);
+
+// ---------- corrida: provas ----------
+
+export const insertRace = (userId, race) =>
+  supabase
+    .from("races")
+    .insert({ id: race.id, user_id: userId, ...raceColumns(race) })
+    .then(unwrap);
+
+export const updateRace = (id, patch) =>
+  supabase.from("races").update(raceColumns(patch)).eq("id", id).then(unwrap);
+
+export const removeRace = (id) =>
+  supabase.from("races").delete().eq("id", id).then(unwrap);
+
+// ---------- corrida: plano de treino ----------
+
+export const insertRunPlan = (userId, plan) =>
+  supabase
+    .from("run_plans")
+    .insert({ id: plan.id, user_id: userId, ...runPlanColumns(plan) })
+    .then(unwrap);
+
+export const updateRunPlan = (id, patch) =>
+  supabase.from("run_plans").update(runPlanColumns(patch)).eq("id", id).then(unwrap);
+
+export const removeRunPlan = (id) =>
+  supabase.from("run_plans").delete().eq("id", id).then(unwrap);
+
+// Só um plano ativo por vez: ao criar o novo, os outros viram histórico.
+export async function archiveOtherPlans(userId, keepId) {
+  const query = supabase.from("run_plans").update({ archived: true }).eq("user_id", userId);
+  unwrap(await (keepId ? query.neq("id", keepId) : query));
+}
+
+// ---------- corrida: cada corrida feita ----------
+
+export const insertRunSession = (userId, session) =>
+  supabase
+    .from("run_sessions")
+    .insert({ id: session.id, user_id: userId, ...runSessionColumns(session) })
+    .then(unwrap);
+
+export const updateRunSession = (id, patch) =>
+  supabase.from("run_sessions").update(runSessionColumns(patch)).eq("id", id).then(unwrap);
+
+export const removeRunSession = (id) =>
+  supabase.from("run_sessions").delete().eq("id", id).then(unwrap);
 
 // ---------- mudança do navegador pro banco ----------
 

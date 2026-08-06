@@ -3,44 +3,190 @@
 @theme {
   --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
 
+  /* Rosa: reservado pra ação principal, estado ativo e UM destaque por tela.
+     Não é mais a cor de texto, de borda nem de selo — pra quando ele aparecer,
+     querer dizer alguma coisa. */
   --color-ritmo-pink-deep: #b0116a;
   --color-ritmo-pink: #e0218a;
   --color-ritmo-pink-soft: #ff6fb5;
   --color-ritmo-pink-light: #ffd9ec;
   --color-ritmo-pink-tint: #fff0f7;
+
+  /* Lilás: informação secundária — selos, contadores, chips, aba ativa. */
   --color-ritmo-lilac: #f4ebff;
+  --color-ritmo-lilac-soft: #e9ddfb;
   --color-ritmo-lilac-ink: #6b4fa0;
-  --color-ritmo-bg: #fff7fb;
+
+  /* Neutros quentes: texto, bordas e divisórias. Tudo isso era rosa antes. */
   --color-ritmo-text: #241220;
+  --color-ritmo-muted: #7d6d79;
+  --color-ritmo-line: #ebe1ea;
+  --color-ritmo-bg: #fdf8fc;
 }
 
-/* Material "vidro líquido": painel translúcido com desfoque de fundo e um
-   fio de luz na borda de cima, simulando o reflexo do vidro. */
-.ritmo-glass {
-  background: rgba(255, 255, 255, 0.6);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-top-color: rgba(255, 255, 255, 0.9);
+/* ---------------------------------------------------------------------------
+   Vidro líquido — três níveis de profundidade
+
+   `ritmo-card`  superfície padrão do app (substituiu o branco chapado)
+   `ritmo-glass` o que sobe: destaque da tela, sheets, navegação
+   `ritmo-inset` o que fica DENTRO de um vidro
+
+   O nível `inset` não tem desfoque próprio de propósito: empilhar
+   backdrop-filter é o que trava a rolagem em celular mais antigo, e um
+   elemento dentro de um card já está sobre um fundo desfocado.
+--------------------------------------------------------------------------- */
+
+.ritmo-card {
+  background: rgba(255, 255, 255, 0.62);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-top-color: rgba(255, 255, 255, 0.95);
   box-shadow:
-    0 10px 30px rgba(176, 17, 106, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    0 6px 22px rgba(36, 18, 32, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.ritmo-glass {
+  background: rgba(255, 255, 255, 0.7);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-top-color: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 14px 40px rgba(107, 79, 160, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .ritmo-glass-nav {
-  background: rgba(255, 255, 255, 0.55);
-  -webkit-backdrop-filter: blur(26px) saturate(180%);
-  backdrop-filter: blur(26px) saturate(180%);
-  border-top: 1px solid rgba(255, 255, 255, 0.75);
-  box-shadow: 0 -10px 26px rgba(176, 17, 106, 0.1);
+  background: rgba(255, 255, 255, 0.62);
+  -webkit-backdrop-filter: blur(30px) saturate(190%);
+  backdrop-filter: blur(30px) saturate(190%);
+  border-top: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 -10px 30px rgba(107, 79, 160, 0.12);
 }
 
+/* Selo/chip de informação secundária. Sem desfoque próprio: vive dentro de
+   um card ou da navegação, que já desfocam. */
 .ritmo-glass-pill {
-  background: rgba(244, 235, 255, 0.75);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+  background: rgba(233, 221, 251, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.75);
 }
+
+.ritmo-inset {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+/* ---------------------------------------------------------------------------
+   Controles
+--------------------------------------------------------------------------- */
+
+/* Campo de formulário: borda neutra parada, rosa só no foco. */
+.ritmo-field {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--color-ritmo-line);
+  color: var(--color-ritmo-text);
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.ritmo-field::placeholder {
+  color: rgba(36, 18, 32, 0.35);
+}
+
+.ritmo-field:focus {
+  border-color: var(--color-ritmo-pink);
+  box-shadow: 0 0 0 3px rgba(224, 33, 138, 0.12);
+}
+
+.ritmo-field:disabled {
+  opacity: 0.6;
+}
+
+/* Ação principal — o único lugar onde o gradiente rosa ainda aparece. */
+.ritmo-cta {
+  background: linear-gradient(135deg, var(--color-ritmo-pink-deep), var(--color-ritmo-pink));
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(176, 17, 106, 0.26);
+  transition: transform 0.15s ease;
+}
+
+.ritmo-cta:active {
+  transform: scale(0.98);
+}
+
+.ritmo-cta:disabled {
+  opacity: 0.6;
+}
+
+/* Ação secundária: era rosa clarinho, virou vidro. */
+.ritmo-ghost {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  color: var(--color-ritmo-text);
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.ritmo-ghost:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.ritmo-ghost:active {
+  transform: scale(0.98);
+}
+
+/* ---------------------------------------------------------------------------
+   Fundo — as manchas que o vidro desfoca
+
+   O desfoque fica no contêiner, não em cada mancha: assim o navegador
+   desfoca a camada uma vez só, e as manchas podem se mover de graça.
+--------------------------------------------------------------------------- */
+
+.ritmo-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  background: var(--color-ritmo-bg);
+  pointer-events: none;
+}
+
+.ritmo-backdrop-inner {
+  position: absolute;
+  inset: -12%;
+  filter: blur(72px);
+}
+
+.ritmo-blob {
+  position: absolute;
+  border-radius: 9999px;
+  animation: ritmo-drift 28s ease-in-out infinite;
+}
+
+@keyframes ritmo-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(5%, -4%, 0) scale(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ritmo-blob {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+--------------------------------------------------------------------------- */
 
 html,
 body,

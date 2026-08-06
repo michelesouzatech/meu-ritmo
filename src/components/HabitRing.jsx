@@ -10,7 +10,7 @@ function HabitRing({ progress, size = 56, stroke = 5 }) {
         cy={size / 2}
         r={radius}
         fill="none"
-        stroke="var(--color-ritmo-pink-light)"
+        stroke="var(--color-ritmo-line)"
         strokeWidth={stroke}
       />
       <circle

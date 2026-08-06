@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase.js";
 import CatMascot from "../components/CatMascot.jsx";
+import GlassBackdrop from "../components/GlassBackdrop.jsx";
 
-const inputClass =
-  "min-h-11 w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 text-sm text-ritmo-text outline-none focus:border-ritmo-pink";
+const inputClass = "ritmo-field min-h-11 w-full rounded-xl px-3 text-sm";
 
 // Aparece depois que a pessoa clica no link de "esqueci minha senha" do e-mail —
 // o Supabase já loga com uma sessão temporária, e essa tela define a senha nova.
@@ -26,10 +26,11 @@ function ResetPasswordScreen({ onDone }) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-ritmo-bg px-6 text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
+      <GlassBackdrop />
       <CatMascot size={160} className="mb-4 drop-shadow-md" />
       <h1 className="text-xl font-semibold tracking-tight text-ritmo-text">Defina sua senha</h1>
-      <p className="mt-2 max-w-xs text-sm text-ritmo-text/60">
+      <p className="mt-2 max-w-xs text-sm text-ritmo-muted">
         Escolhe uma senha nova pra usar daqui pra frente.
       </p>
 
@@ -47,7 +48,7 @@ function ResetPasswordScreen({ onDone }) {
         <button
           type="submit"
           disabled={loading}
-          className="mt-2 flex min-h-11 w-full items-center justify-center rounded-full bg-ritmo-pink px-4 text-sm font-semibold text-white shadow-md shadow-ritmo-pink/30 transition-transform active:scale-[0.98] disabled:opacity-60"
+          className="ritmo-cta mt-2 flex min-h-11 w-full items-center justify-center rounded-full px-4 text-sm font-semibold"
         >
           {loading ? "Salvando..." : "Salvar senha"}
         </button>

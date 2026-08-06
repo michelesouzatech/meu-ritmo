@@ -4,8 +4,8 @@ import { formatDatePtBr } from "../lib/date.js";
 
 function InsightCard({ icon: Icon, text }) {
   return (
-    <div className="flex items-start gap-3 rounded-2xl bg-white p-4 shadow-sm shadow-ritmo-text/5">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ritmo-pink-light text-ritmo-pink-deep">
+    <div className="ritmo-card flex items-start gap-3 rounded-2xl p-4">
+      <div className="ritmo-glass-pill flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ritmo-lilac-ink">
         <Icon size={16} />
       </div>
       <p className="text-sm text-ritmo-text">{text}</p>
@@ -18,7 +18,7 @@ function InsightSection({ title, icon, items, emptyText }) {
     <section className="mb-6">
       <h2 className="mb-3 text-base font-semibold text-ritmo-text">{title}</h2>
       {items.length === 0 ? (
-        <p className="rounded-2xl bg-white p-4 text-center text-sm text-ritmo-text/50 shadow-sm shadow-ritmo-text/5">
+        <p className="ritmo-card rounded-2xl p-4 text-center text-sm text-ritmo-muted">
           {emptyText}
         </p>
       ) : (
@@ -46,11 +46,11 @@ function InsightsScreen({ tasks, habits, workout, bodyFat, calendar }) {
   if (!hasAnyData) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-ritmo-pink-light text-ritmo-pink-deep">
+        <div className="ritmo-glass-pill mb-4 flex h-16 w-16 items-center justify-center rounded-full text-ritmo-lilac-ink">
           <Sparkles size={28} />
         </div>
         <h1 className="text-xl font-semibold text-ritmo-text">Ainda sem dados suficientes</h1>
-        <p className="mt-2 max-w-xs text-sm text-ritmo-text/50">
+        <p className="mt-2 max-w-xs text-sm text-ritmo-muted">
           Use as abas de Tarefas, Hábitos e Treino por alguns dias — assim que houver dados, essa
           tela cruza tudo pra você.
         </p>
@@ -64,20 +64,30 @@ function InsightsScreen({ tasks, habits, workout, bodyFat, calendar }) {
     <div>
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight text-ritmo-text">Insights</h1>
-        <p className="mt-1 text-sm text-ritmo-text/60">
+        <p className="mt-1 text-sm text-ritmo-muted">
           {formatDatePtBr(taskSummary.start)} – {formatDatePtBr(taskSummary.end)}
         </p>
       </header>
 
-      <section className="mb-6 rounded-2xl bg-gradient-to-br from-ritmo-pink-deep to-ritmo-pink px-4 py-4 text-white shadow-md shadow-ritmo-pink/30">
-        <p className="text-xs opacity-90">Resumo da semana</p>
-        <p className="mt-1 text-sm font-medium leading-snug">
-          {taskRatePercent !== null
-            ? `Essa semana você completou ${taskRatePercent}% das tarefas (${taskSummary.done} de ${taskSummary.total}).`
-            : "Você ainda não tem tarefas com data nessa semana."}
+      {/* O destaque da tela: era um bloco rosa inteiro, virou vidro com o
+          número em rosa — o rosa agora aponta pro dado, não pinta o fundo. */}
+      <section className="ritmo-glass mb-6 rounded-2xl px-4 py-4">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-ritmo-lilac-ink">
+          Resumo da semana
+        </p>
+        <p className="mt-1.5 text-sm font-medium leading-snug text-ritmo-text">
+          {taskRatePercent !== null ? (
+            <>
+              Essa semana você completou{" "}
+              <strong className="text-ritmo-pink-deep">{taskRatePercent}%</strong> das
+              tarefas ({taskSummary.done} de {taskSummary.total}).
+            </>
+          ) : (
+            "Você ainda não tem tarefas com data nessa semana."
+          )}
         </p>
         {calendarSummary && (
-          <p className="mt-1 text-sm font-medium leading-snug">
+          <p className="mt-1 text-sm font-medium leading-snug text-ritmo-text">
             {calendarSummary.upcomingCount === 0
               ? "Sua agenda está vazia nos próximos 7 dias."
               : `Na agenda: ${calendarSummary.upcomingCount} compromisso${calendarSummary.upcomingCount === 1 ? "" : "s"} nos próximos 7 dias${calendarSummary.busyHours > 0 ? ` (cerca de ${calendarSummary.busyHours}h)` : ""}.`}

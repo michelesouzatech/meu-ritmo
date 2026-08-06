@@ -10,9 +10,9 @@ function displayName(user) {
 
 function StatCard({ label, value }) {
   return (
-    <div className="rounded-2xl bg-white p-4 text-center shadow-sm shadow-ritmo-text/5">
+    <div className="ritmo-card rounded-2xl p-4 text-center">
       <p className="text-xl font-semibold text-ritmo-pink-deep">{value}</p>
-      <p className="mt-0.5 text-xs text-ritmo-text/50">{label}</p>
+      <p className="mt-0.5 text-xs text-ritmo-muted">{label}</p>
     </div>
   );
 }
@@ -61,7 +61,7 @@ function ProfileScreen({ user, tasks, habits, workout, bodyFat, calendar, onLogo
       <button
         type="button"
         onClick={() => onNavigate("home")}
-        className="mb-4 flex min-h-11 items-center gap-1 rounded-full pr-3 text-sm font-medium text-ritmo-text/60 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep"
+        className="mb-4 flex min-h-11 items-center gap-1 rounded-full pr-3 text-sm font-medium text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
       >
         <ArrowLeft size={20} />
         Voltar
@@ -95,12 +95,12 @@ function ProfileScreen({ user, tasks, habits, workout, bodyFat, calendar, onLogo
             className="hidden"
           />
         </div>
-        {uploading && <p className="mt-2 text-xs text-ritmo-text/50">Enviando foto...</p>}
+        {uploading && <p className="mt-2 text-xs text-ritmo-muted">Enviando foto...</p>}
         {error && <p className="mt-2 text-xs text-ritmo-pink-deep">{error}</p>}
         <h1 className="mt-3 text-xl font-semibold tracking-tight text-ritmo-text">
           {displayName(user)}
         </h1>
-        <p className="mt-0.5 text-sm text-ritmo-text/50">{user?.email}</p>
+        <p className="mt-0.5 text-sm text-ritmo-muted">{user?.email}</p>
       </header>
 
       <div className="mb-6 grid grid-cols-2 gap-3">
@@ -111,7 +111,7 @@ function ProfileScreen({ user, tasks, habits, workout, bodyFat, calendar, onLogo
       <button
         type="button"
         onClick={onLogout}
-        className="mb-8 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-ritmo-pink-deep shadow-sm shadow-ritmo-text/5 transition-transform active:scale-[0.98]"
+        className="ritmo-ghost mb-8 flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold text-ritmo-pink-deep"
       >
         <LogOut size={18} />
         Sair da conta

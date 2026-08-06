@@ -55,11 +55,11 @@ export function HabitFormSheet({ habit, onClose, onSave }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Ex: Beber 2L de água"
-            className="min-h-11 w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 text-sm text-ritmo-text outline-none focus:border-ritmo-pink"
+            className="ritmo-field min-h-11 w-full rounded-xl px-3 text-sm"
           />
         </div>
 
-        <label className="flex min-h-11 cursor-pointer items-center justify-between rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3">
+        <label className="ritmo-field flex min-h-11 cursor-pointer items-center justify-between rounded-xl px-3">
           <span className="text-sm font-medium text-ritmo-text/70">
             Definir um ciclo com prazo (opcional)
           </span>
@@ -83,7 +83,7 @@ export function HabitFormSheet({ habit, onClose, onSave }) {
                 max={365}
                 value={periodDays}
                 onChange={(e) => setPeriodDays(e.target.value)}
-                className="min-h-11 w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 text-sm text-ritmo-text outline-none focus:border-ritmo-pink"
+                className="ritmo-field min-h-11 w-full rounded-xl px-3 text-sm"
               />
             </div>
             <div>
@@ -94,20 +94,17 @@ export function HabitFormSheet({ habit, onClose, onSave }) {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="min-h-11 w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 text-sm text-ritmo-text outline-none focus:border-ritmo-pink"
+                className="ritmo-field min-h-11 w-full rounded-xl px-3 text-sm"
               />
             </div>
           </>
         ) : (
-          <p className="text-xs text-ritmo-text/45">
+          <p className="text-xs text-ritmo-muted">
             Sem ciclo definido, esse hábito é diário e não tem data pra terminar — você marca todo dia que cumprir.
           </p>
         )}
 
-        <button
-          type="submit"
-          className="min-h-11 w-full rounded-full bg-gradient-to-br from-ritmo-pink-deep to-ritmo-pink text-sm font-semibold text-white shadow-md shadow-ritmo-pink/30 transition-transform active:scale-[0.98]"
-        >
+        <button type="submit" className="ritmo-cta min-h-11 w-full rounded-full text-sm font-semibold">
           {isEditing ? "Salvar alterações" : "Criar hábito"}
         </button>
       </form>
@@ -172,11 +169,9 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
   const canEdit = date <= today && (!habit.periodDays || date >= habit.startDate);
 
   return (
-    <div className="rounded-2xl bg-white p-3.5 shadow-sm shadow-ritmo-text/5">
+    <div className="ritmo-card rounded-2xl p-3.5">
       {!isEditingToday && (
-        <p className="mb-2 text-xs font-medium text-ritmo-pink-deep">
-          {formatDatePtBr(date)}
-        </p>
+        <p className="mb-2 text-xs font-medium text-ritmo-lilac-ink">{formatDatePtBr(date)}</p>
       )}
       <div className="flex items-start gap-3">
         <button
@@ -187,7 +182,7 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
           className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border-2 transition-colors disabled:opacity-60 ${
             doneOnDate
               ? "border-ritmo-pink bg-ritmo-pink text-white"
-              : "border-ritmo-pink-light bg-white"
+              : "border-ritmo-line bg-white/60"
           }`}
         >
           {doneOnDate && <Check size={16} strokeWidth={3} />}
@@ -195,7 +190,7 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-ritmo-text">{habit.name}</p>
           {progress.isDaily ? (
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-ritmo-text/50">
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-ritmo-muted">
               {progress.streak > 0 ? (
                 <>
                   <Flame size={12} className="text-ritmo-pink" />
@@ -207,12 +202,12 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
               )}
             </p>
           ) : notStarted ? (
-            <p className="mt-0.5 text-xs text-ritmo-text/50">
+            <p className="mt-0.5 text-xs text-ritmo-muted">
               Começa em {formatDatePtBr(habit.startDate)}
             </p>
           ) : (
             <>
-              <p className="mt-0.5 text-xs text-ritmo-text/50">
+              <p className="mt-0.5 text-xs text-ritmo-muted">
                 {isFinished
                   ? `${habit.completions.length} de ${habit.periodDays} dias cumpridos`
                   : `${progress.daysRemaining} dia${progress.daysRemaining === 1 ? "" : "s"} restante${progress.daysRemaining === 1 ? "" : "s"} no ciclo`}
@@ -239,7 +234,7 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
             <button
               type="button"
               onClick={() => onEdit(habit)}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
               aria-label="Editar hábito"
             >
               <Pencil size={14} />
@@ -247,7 +242,7 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
             <button
               type="button"
               onClick={() => onDelete(habit.id)}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
               aria-label="Excluir hábito"
             >
               <Trash2 size={14} />
@@ -257,7 +252,7 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
             <button
               type="button"
               onClick={() => onRestart(habit.id)}
-              className="flex min-h-7 items-center gap-1 rounded-full bg-ritmo-pink-light/60 px-2.5 text-[11px] font-medium text-ritmo-pink-deep transition-colors hover:bg-ritmo-pink-light"
+              className="ritmo-ghost flex min-h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium text-ritmo-pink-deep"
             >
               <RotateCcw size={12} /> Novo ciclo
             </button>
@@ -283,7 +278,7 @@ function SortableHabitItem({ habit, date, onToggleDate, onDelete, onRestart, onE
       <button
         type="button"
         aria-label="Arrastar para reordenar"
-        className="mt-2.5 flex h-11 w-7 shrink-0 touch-none items-center justify-center rounded-lg text-ritmo-text/25 transition-colors hover:bg-ritmo-pink-tint hover:text-ritmo-pink-deep active:cursor-grabbing"
+        className="mt-2.5 flex h-11 w-7 shrink-0 touch-none items-center justify-center rounded-lg text-ritmo-text/25 transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink active:cursor-grabbing"
         {...attributes}
         {...listeners}
       >
@@ -313,7 +308,7 @@ function DateDropdown({ selectedDate, onSelectDate, habits }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex min-h-9 items-center gap-1 rounded-full bg-white px-3 py-1.5 text-sm font-semibold text-ritmo-text shadow-sm shadow-ritmo-text/5"
+        className="ritmo-card flex min-h-9 items-center gap-1 rounded-full px-3 py-1.5 text-sm font-semibold text-ritmo-text"
       >
         {label}
         <ChevronDown
@@ -330,7 +325,7 @@ function DateDropdown({ selectedDate, onSelectDate, habits }) {
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-40 cursor-default"
           />
-          <div className="absolute left-0 top-full z-50 mt-2 w-[300px] max-w-[calc(100vw-2.5rem)] rounded-2xl bg-white p-4 shadow-xl shadow-ritmo-text/15">
+          <div className="ritmo-glass absolute left-0 top-full z-50 mt-2 w-[300px] max-w-[calc(100vw-2.5rem)] rounded-2xl p-4">
             <HabitCalendar
               habits={habits}
               selectedDate={selectedDate}
@@ -367,7 +362,7 @@ function HabitsScreen({ habits, onToggleDate, onDelete, onRestart, onEdit, onReo
           <h1 className="text-2xl font-semibold tracking-tight text-ritmo-text">
             Hábitos
           </h1>
-          <p className="mt-1 text-sm text-ritmo-text/60">
+          <p className="mt-1 text-sm text-ritmo-muted">
             Diários ou com ciclo por período — do jeito que fizer sentido
           </p>
         </div>
@@ -375,7 +370,7 @@ function HabitsScreen({ habits, onToggleDate, onDelete, onRestart, onEdit, onReo
       </header>
 
       {habits.length === 0 ? (
-        <p className="rounded-2xl bg-white p-4 text-center text-sm text-ritmo-text/50 shadow-sm shadow-ritmo-text/5">
+        <p className="ritmo-card rounded-2xl p-4 text-center text-sm text-ritmo-muted">
           Toque no botão + para criar seu primeiro hábito.
         </p>
       ) : (

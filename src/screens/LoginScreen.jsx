@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase.js";
 import CatMascot from "../components/CatMascot.jsx";
+import GlassBackdrop from "../components/GlassBackdrop.jsx";
 
-const inputClass =
-  "min-h-11 w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 text-sm text-ritmo-text outline-none focus:border-ritmo-pink";
+const inputClass = "ritmo-field min-h-11 w-full rounded-xl px-3 text-sm";
 
 function LoginScreen() {
   const [mode, setMode] = useState("signIn");
@@ -52,10 +52,11 @@ function LoginScreen() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-ritmo-bg px-6 text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
+      <GlassBackdrop />
       <CatMascot size={200} className="mb-4 drop-shadow-md" />
       <h1 className="text-2xl font-semibold tracking-tight text-ritmo-text">Meu Ritmo</h1>
-      <p className="mt-2 max-w-xs text-sm text-ritmo-text/60">
+      <p className="mt-2 max-w-xs text-sm text-ritmo-muted">
         {isForgot
           ? "Digita seu e-mail pra receber um link e definir uma senha nova."
           : isSignUp
@@ -89,7 +90,7 @@ function LoginScreen() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-2 flex min-h-11 w-full items-center justify-center rounded-full bg-ritmo-pink px-4 text-sm font-semibold text-white shadow-md shadow-ritmo-pink/30 transition-transform active:scale-[0.98] disabled:opacity-60"
+          className="ritmo-cta mt-2 flex min-h-11 w-full items-center justify-center rounded-full px-4 text-sm font-semibold"
         >
           {loading
             ? "Um instante..."
@@ -110,7 +111,7 @@ function LoginScreen() {
               setError(null);
               setInfo(null);
             }}
-            className="min-h-11 text-sm font-medium text-ritmo-text/60 underline-offset-2 hover:underline"
+            className="min-h-11 text-sm font-medium text-ritmo-muted underline-offset-2 hover:underline"
           >
             {isSignUp ? "Já tenho conta" : "Criar conta nova"}
           </button>
@@ -123,7 +124,7 @@ function LoginScreen() {
               setError(null);
               setInfo(null);
             }}
-            className="min-h-11 text-sm font-medium text-ritmo-text/60 underline-offset-2 hover:underline"
+            className="min-h-11 text-sm font-medium text-ritmo-muted underline-offset-2 hover:underline"
           >
             {isForgot ? "Voltar pro login" : "Esqueci minha senha"}
           </button>
@@ -131,7 +132,7 @@ function LoginScreen() {
       </div>
 
       {error && <p className="mt-4 text-xs text-ritmo-pink-deep">{error}</p>}
-      {info && <p className="mt-4 text-xs text-ritmo-text/60">{info}</p>}
+      {info && <p className="mt-4 text-xs text-ritmo-muted">{info}</p>}
     </div>
   );
 }

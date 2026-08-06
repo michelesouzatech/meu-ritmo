@@ -5,6 +5,7 @@ import { todayISO, daysBetween, addDays } from "../lib/date.js";
 import { eventsOnDay } from "../lib/googleCalendar.js";
 import { habitProgress } from "./HabitsScreen.jsx";
 import { joinNamesCapped } from "../lib/text.js";
+import { daysUntil, nextRace, weekProgress } from "../lib/running.js";
 
 const NUMBER_WORDS = ["zero", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez"];
 function numberWord(n) {
@@ -69,6 +70,43 @@ function agendaTodayLine(events, today) {
   return `Você ainda tem ${numberWord(upcoming.length)} compromisso${upcoming.length === 1 ? "" : "s"} hoje, dá uma olhada na agenda pra não esquecer de nada.`;
 }
 
+// Duas linhas de corrida no resumo: a prova chegando e a meta da semana. Só
+// aparecem quando têm o que dizer — prova longe demais ou meta já batida no
+// meio da semana viram ruído.
+function runningLines(running, today) {
+  const lines = [];
+  if (!running) return lines;
+
+  const race = nextRace(running.races, today);
+  if (race) {
+    const days = daysUntil(race.date, today);
+    if (days === 0) {
+      lines.push(`Hoje é o dia da ${race.name}! Boa prova. 🏃‍♀️`);
+    } else if (days === 1) {
+      lines.push(`A ${race.name} é amanhã — separa o kit e dorme cedo.`);
+    } else if (days <= 30) {
+      lines.push(`Faltam ${days} dias pra ${race.name}.`);
+    }
+  }
+
+  const plan = running.plan;
+  if (plan) {
+    const week = weekProgress(plan, running.sessions, today);
+    const missing = week.target - week.done;
+    const weekday = new Date(`${today}T00:00:00`).getDay();
+    // Só cobra a partir de quinta, quando ainda dá pra correr atrás.
+    if (missing > 0 && weekday >= 4) {
+      lines.push(
+        `Falta${missing === 1 ? "" : "m"} ${missing} corrida${missing === 1 ? "" : "s"} pra fechar sua meta da semana.`,
+      );
+    } else if (missing <= 0 && week.target > 0) {
+      lines.push("Meta de corrida da semana batida! 🎉");
+    }
+  }
+
+  return lines;
+}
+
 function agendaTomorrowLine(events, today) {
   const tomorrowEvents = eventsOnDay(events, addDays(today, 1));
   if (tomorrowEvents.length === 0) return null;
@@ -79,7 +117,15 @@ function agendaTomorrowLine(events, today) {
 // (tarefa urgente, hábito pendente, agenda de hoje e de amanhã). Cada linha
 // já vem enxuta — nome de hábito encurtado, agenda resumida em contagem —
 // então dá pra empilhar sem virar textão.
-function summaryLines({ overdueTasks, dueTodayTasks, doneHabits, pendingHabits, events, today }) {
+function summaryLines({
+  overdueTasks,
+  dueTodayTasks,
+  doneHabits,
+  pendingHabits,
+  events,
+  running,
+  today,
+}) {
   const lines = [];
 
   if (overdueTasks.length === 1) {
@@ -105,6 +151,8 @@ function summaryLines({ overdueTasks, dueTodayTasks, doneHabits, pendingHabits, 
   } else if (doneHabits.length > 0) {
     lines.push("Você já cuidou de todos os hábitos de hoje! 🎉");
   }
+
+  lines.push(...runningLines(running, today));
 
   const todayLine = agendaTodayLine(events, today);
   if (todayLine) lines.push(todayLine);
@@ -132,6 +180,7 @@ function HomeScreen({
   habits,
   user,
   calendar,
+  running,
   onToggleTask,
   onConnectCalendar,
   onRefreshCalendar,
@@ -159,6 +208,7 @@ function HomeScreen({
     doneHabits: habitsDoneTodayList,
     pendingHabits: habitsPendingTodayList,
     events: calendar.status === "ready" ? calendar.events : [],
+    running,
     today,
   });
 
@@ -166,7 +216,7 @@ function HomeScreen({
     <div>
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <p className="text-sm text-ritmo-text/60">Olá, {firstName(user)}</p>
+          <p className="text-sm text-ritmo-muted">Olá, {firstName(user)}</p>
           <h1 className="text-2xl font-semibold tracking-tight text-ritmo-text">
             Meu Ritmo
           </h1>
@@ -175,10 +225,10 @@ function HomeScreen({
           <button
             type="button"
             aria-label="Notificações"
-            className="relative flex h-11 w-11 items-center justify-center rounded-full text-ritmo-text/60 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep"
+            className="relative flex h-11 w-11 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
           >
             <Bell size={20} />
-            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-ritmo-pink-deep ring-2 ring-ritmo-bg" />
+            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-ritmo-pink ring-2 ring-ritmo-bg" />
           </button>
           <button
             type="button"
@@ -202,7 +252,7 @@ function HomeScreen({
       </header>
 
       <section className="ritmo-glass mb-5 rounded-2xl px-4 py-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-ritmo-pink-deep/80">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-ritmo-lilac-ink">
           Seu resumo de hoje
         </p>
         {lines.map((line, i) => (
@@ -231,14 +281,14 @@ function HomeScreen({
         <button
           type="button"
           onClick={() => onNavigate("tasks")}
-          className="min-h-11 rounded-full px-3 text-sm font-medium text-ritmo-pink transition-colors hover:bg-ritmo-pink-light/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ritmo-pink"
+          className="min-h-11 rounded-full px-3 text-sm font-medium text-ritmo-lilac-ink transition-colors hover:bg-ritmo-lilac focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ritmo-pink"
         >
           ver todas
         </button>
       </div>
 
       {upcomingTasks.length === 0 ? (
-        <p className="mb-6 rounded-2xl bg-white p-4 text-center text-sm text-ritmo-text/50 shadow-sm shadow-ritmo-text/5">
+        <p className="ritmo-card mb-6 rounded-2xl p-4 text-center text-sm text-ritmo-muted">
           Nenhuma tarefa pendente por hoje. 🎉
         </p>
       ) : (
@@ -248,7 +298,7 @@ function HomeScreen({
             return (
               <label
                 key={task.id}
-                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl bg-white p-4 shadow-sm shadow-ritmo-text/5 transition-shadow hover:shadow-md"
+                className="ritmo-card flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl p-4 transition-shadow hover:shadow-md"
               >
                 <input
                   type="checkbox"
@@ -260,11 +310,11 @@ function HomeScreen({
                   <Check size={12} strokeWidth={3} className="text-transparent peer-checked:text-white" />
                 </span>
                 {task.urgent && (
-                  <AlertTriangle size={16} className="shrink-0 text-ritmo-pink-deep" aria-label="Urgente" />
+                  <AlertTriangle size={16} className="shrink-0 text-ritmo-pink" aria-label="Urgente" />
                 )}
                 <p className="min-w-0 flex-1 truncate text-sm text-ritmo-text">{task.title}</p>
                 {isOverdue && (
-                  <span className="shrink-0 rounded-full bg-ritmo-pink-deep/10 px-2 py-1 text-xs font-medium text-ritmo-pink-deep">
+                  <span className="shrink-0 rounded-full bg-ritmo-pink-light px-2 py-1 text-xs font-medium text-ritmo-pink-deep">
                     atrasada
                   </span>
                 )}
@@ -279,7 +329,7 @@ function HomeScreen({
         <button
           type="button"
           onClick={() => onNavigate("habits")}
-          className="min-h-11 rounded-full px-3 text-sm font-medium text-ritmo-pink transition-colors hover:bg-ritmo-pink-light/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ritmo-pink"
+          className="min-h-11 rounded-full px-3 text-sm font-medium text-ritmo-lilac-ink transition-colors hover:bg-ritmo-lilac focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ritmo-pink"
         >
           ver todos
         </button>

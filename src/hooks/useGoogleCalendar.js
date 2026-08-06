@@ -129,8 +129,9 @@ export function useGoogleCalendar(session) {
         setStatus("expired");
         throw new CalendarAuthError();
       }
+      let result;
       try {
-        await action(token);
+        result = await action(token);
       } catch (error) {
         if (error instanceof CalendarAuthError) {
           clearGoogleToken();
@@ -140,6 +141,9 @@ export function useGoogleCalendar(session) {
         throw error;
       }
       await load(focusDate);
+      // Devolve o que o Google respondeu — quem cria uma prova precisa do id
+      // do compromisso pra não criar duplicado depois.
+      return result;
     },
     [load, focusDate],
   );

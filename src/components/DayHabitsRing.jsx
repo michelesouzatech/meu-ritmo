@@ -13,7 +13,7 @@ function DayHabitsRing({ done, total }) {
       </div>
       <div className="min-w-0">
         <p className="text-sm font-semibold text-ritmo-text">Progresso do dia</p>
-        <p className="mt-0.5 text-xs text-ritmo-text/50">
+        <p className="mt-0.5 text-xs text-ritmo-muted">
           {total === 0
             ? "Nenhum hábito ativo"
             : `${done} de ${total} hábito${plural ? "s" : ""} concluído${plural ? "s" : ""} hoje`}

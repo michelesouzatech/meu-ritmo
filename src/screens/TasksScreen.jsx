@@ -30,7 +30,7 @@ export function TaskFormSheet({ onClose, onSave }) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Ex: Responder e-mails"
-            className="min-h-11 w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 text-sm text-ritmo-text outline-none focus:border-ritmo-pink"
+            className="ritmo-field min-h-11 w-full rounded-xl px-3 text-sm"
           />
         </div>
         <div>
@@ -41,7 +41,7 @@ export function TaskFormSheet({ onClose, onSave }) {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="min-h-11 w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 text-sm text-ritmo-text outline-none focus:border-ritmo-pink"
+            className="ritmo-field min-h-11 w-full rounded-xl px-3 text-sm"
           />
           <p className="mt-1 text-xs text-ritmo-text/45">
             Deixe em branco para anotar sem uma data definida.
@@ -55,10 +55,10 @@ export function TaskFormSheet({ onClose, onSave }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={2}
-            className="w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 py-2 text-sm text-ritmo-text outline-none focus:border-ritmo-pink"
+            className="ritmo-field w-full rounded-xl px-3 py-2 text-sm"
           />
         </div>
-        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3">
+        <label className="ritmo-field flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3">
           <input
             type="checkbox"
             checked={urgent}
@@ -66,7 +66,7 @@ export function TaskFormSheet({ onClose, onSave }) {
             className="peer sr-only"
           />
           <span
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-ritmo-pink-deep transition-colors peer-checked:bg-ritmo-pink-deep"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-ritmo-pink transition-colors peer-checked:bg-ritmo-pink"
             aria-hidden
           >
             <AlertTriangle
@@ -77,10 +77,7 @@ export function TaskFormSheet({ onClose, onSave }) {
           </span>
           <span className="text-sm text-ritmo-text">Marcar como urgente</span>
         </label>
-        <button
-          type="submit"
-          className="min-h-11 w-full rounded-full bg-gradient-to-br from-ritmo-pink-deep to-ritmo-pink text-sm font-semibold text-white shadow-md shadow-ritmo-pink/30 transition-transform active:scale-[0.98]"
-        >
+        <button type="submit" className="ritmo-cta min-h-11 w-full rounded-full text-sm font-semibold">
           Salvar tarefa
         </button>
       </form>
@@ -93,7 +90,7 @@ function TaskItem({ task, onToggle, onDelete }) {
 
   return (
     <SwipeToDelete onDelete={() => onDelete(task.id)} deleteLabel="Excluir tarefa">
-      <div className="flex items-center gap-2 bg-white p-4 shadow-sm shadow-ritmo-text/5">
+      <div className="ritmo-card flex items-center gap-2 p-4">
         <label className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-3">
           <input
             type="checkbox"
@@ -112,11 +109,7 @@ function TaskItem({ task, onToggle, onDelete }) {
             />
           </span>
           {task.urgent && !task.done && (
-            <AlertTriangle
-              size={16}
-              className="shrink-0 text-ritmo-pink-deep"
-              aria-label="Urgente"
-            />
+            <AlertTriangle size={16} className="shrink-0 text-ritmo-pink" aria-label="Urgente" />
           )}
           <div className="min-w-0 flex-1">
             <p
@@ -124,15 +117,13 @@ function TaskItem({ task, onToggle, onDelete }) {
             >
               {task.title}
             </p>
-            {task.note && (
-              <p className="truncate text-xs text-ritmo-text/45">{task.note}</p>
-            )}
+            {task.note && <p className="truncate text-xs text-ritmo-muted">{task.note}</p>}
           </div>
           <span
             className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${
               isOverdue
-                ? "bg-ritmo-pink-deep/10 text-ritmo-pink-deep"
-                : "bg-ritmo-pink-light text-ritmo-pink-deep"
+                ? "bg-ritmo-pink-light text-ritmo-pink-deep"
+                : "ritmo-glass-pill text-ritmo-lilac-ink"
             }`}
           >
             {isOverdue
@@ -166,7 +157,7 @@ function TasksScreen({ tasks, onToggle, onDelete, onAdd }) {
           <h1 className="text-2xl font-semibold tracking-tight text-ritmo-text">
             Tarefas
           </h1>
-          <p className="mt-1 text-sm text-ritmo-text/60">
+          <p className="mt-1 text-sm text-ritmo-muted">
             {pending.length === 0
               ? "Nenhuma tarefa pendente"
               : `${pending.length} pendente${pending.length > 1 ? "s" : ""}`}
@@ -176,7 +167,7 @@ function TasksScreen({ tasks, onToggle, onDelete, onAdd }) {
       </header>
 
       {tasks.length === 0 && (
-        <p className="rounded-2xl bg-white p-4 text-center text-sm text-ritmo-text/50 shadow-sm shadow-ritmo-text/5">
+        <p className="ritmo-card rounded-2xl p-4 text-center text-sm text-ritmo-muted">
           Toque no botão + para adicionar sua primeira tarefa.
         </p>
       )}
@@ -196,9 +187,7 @@ function TasksScreen({ tasks, onToggle, onDelete, onAdd }) {
 
       {done.length > 0 && (
         <>
-          <h2 className="mb-3 text-base font-semibold text-ritmo-text/60">
-            Concluídas
-          </h2>
+          <h2 className="mb-3 text-base font-semibold text-ritmo-muted">Concluídas</h2>
           <div className="space-y-3">
             {done.map((task) => (
               <TaskItem

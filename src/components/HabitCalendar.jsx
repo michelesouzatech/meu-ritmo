@@ -47,7 +47,7 @@ function HabitCalendar({ habits, selectedDate, onSelectDate }) {
           type="button"
           onClick={() => goToMonth(-1)}
           aria-label="Mês anterior"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-text/50 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
         >
           <ChevronLeft size={18} />
         </button>
@@ -58,7 +58,7 @@ function HabitCalendar({ habits, selectedDate, onSelectDate }) {
           type="button"
           onClick={() => goToMonth(1)}
           aria-label="Próximo mês"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-text/50 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
         >
           <ChevronRight size={18} />
         </button>
@@ -66,7 +66,7 @@ function HabitCalendar({ habits, selectedDate, onSelectDate }) {
 
       <div className="grid grid-cols-7 gap-y-2 text-center">
         {WEEKDAY_LABELS.map((label, i) => (
-          <span key={i} className="text-xs font-medium text-ritmo-text/40">
+          <span key={i} className="text-xs font-medium text-ritmo-muted">
             {label}
           </span>
         ))}
@@ -105,7 +105,7 @@ function HabitCalendar({ habits, selectedDate, onSelectDate }) {
         )}
       </div>
 
-      <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm shadow-ritmo-text/5">
+      <div className="ritmo-inset mt-4 rounded-2xl p-4">
         <p className="mb-2 text-sm font-medium text-ritmo-text">
           {new Date(selectedDate + "T00:00:00").toLocaleDateString("pt-BR", {
             day: "2-digit",
@@ -113,9 +113,7 @@ function HabitCalendar({ habits, selectedDate, onSelectDate }) {
           })}
         </p>
         {selectedHabits.length === 0 ? (
-          <p className="text-xs text-ritmo-text/50">
-            Nenhum hábito marcado nesse dia.
-          </p>
+          <p className="text-xs text-ritmo-muted">Nenhum hábito marcado nesse dia.</p>
         ) : (
           <ul className="space-y-1">
             {selectedHabits.map((name, i) => (

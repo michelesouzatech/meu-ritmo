@@ -39,11 +39,11 @@ function HabitWeekStrip({ habits, selectedDate, onSelectDate }) {
           type="button"
           onClick={() => goToWeek(-1)}
           aria-label="Semana anterior"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-ritmo-text/40 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
         >
           <ChevronLeft size={16} />
         </button>
-        <p className="text-xs font-medium text-ritmo-text/50">
+        <p className="text-xs font-medium text-ritmo-muted">
           {isCurrentWeek ? "Esta semana" : "Voltar pra esta semana"}
           {!isCurrentWeek && (
             <button
@@ -60,7 +60,7 @@ function HabitWeekStrip({ habits, selectedDate, onSelectDate }) {
           onClick={() => goToWeek(1)}
           disabled={isCurrentWeek}
           aria-label="Próxima semana"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-ritmo-text/40 transition-colors hover:bg-ritmo-pink-light/60 hover:text-ritmo-pink-deep disabled:opacity-30 disabled:pointer-events-none"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink disabled:pointer-events-none disabled:opacity-30"
         >
           <ChevronRight size={16} />
         </button>
@@ -81,7 +81,7 @@ function HabitWeekStrip({ habits, selectedDate, onSelectDate }) {
 
           return (
             <div key={iso} className="flex flex-col items-center gap-1">
-              <span className="text-[11px] font-medium text-ritmo-text/40">
+              <span className="text-[11px] font-medium text-ritmo-muted">
                 {WEEKDAY_LABELS[d.getDay()]}
               </span>
               <button
@@ -97,7 +97,7 @@ function HabitWeekStrip({ habits, selectedDate, onSelectDate }) {
                     ? "2px solid var(--color-ritmo-pink-deep)"
                     : isToday
                       ? "1.5px solid var(--color-ritmo-pink)"
-                      : "1.5px solid var(--color-ritmo-pink-light)",
+                      : "1.5px solid var(--color-ritmo-line)",
                 }}
               >
                 {isComplete ? <Check size={16} strokeWidth={3} /> : d.getDate()}

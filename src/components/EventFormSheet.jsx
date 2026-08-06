@@ -57,13 +57,12 @@ function Field({ label, children, hint }) {
     <div>
       <label className="mb-1 block text-sm font-medium text-ritmo-text/70">{label}</label>
       {children}
-      {hint && <p className="mt-1 text-xs text-ritmo-text/45">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-ritmo-muted">{hint}</p>}
     </div>
   );
 }
 
-const inputClass =
-  "min-h-11 w-full rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3 text-sm text-ritmo-text outline-none focus:border-ritmo-pink disabled:opacity-60";
+const inputClass = "ritmo-field min-h-11 w-full rounded-xl px-3 text-sm";
 
 function EventFormSheet({ event, dateISO, startTime, onClose, onCreate, onUpdate, onDelete }) {
   const isEditing = !!event;
@@ -135,7 +134,7 @@ function EventFormSheet({ event, dateISO, startTime, onClose, onCreate, onUpdate
     <Sheet title={isEditing ? "Editar compromisso" : "Novo compromisso"} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {isEditing && event.calendarName && (
-          <p className="flex items-center gap-2 text-xs text-ritmo-text/50">
+          <p className="flex items-center gap-2 text-xs text-ritmo-muted">
             <span
               className="h-2.5 w-2.5 shrink-0 rounded-full"
               style={{ backgroundColor: event.color ?? "var(--color-ritmo-pink)" }}
@@ -166,7 +165,7 @@ function EventFormSheet({ event, dateISO, startTime, onClose, onCreate, onUpdate
           />
         </Field>
 
-        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-ritmo-pink-light bg-ritmo-bg px-3">
+        <label className="ritmo-field flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3">
           <input
             type="checkbox"
             disabled={readOnly}
@@ -221,7 +220,7 @@ function EventFormSheet({ event, dateISO, startTime, onClose, onCreate, onUpdate
         </Field>
 
         {event?.recurring && (
-          <p className="flex items-start gap-2 rounded-xl bg-ritmo-pink-tint px-3 py-2 text-xs text-ritmo-text/60">
+          <p className="flex items-start gap-2 ritmo-inset rounded-xl px-3 py-2 text-xs text-ritmo-muted">
             <Repeat size={14} className="mt-0.5 shrink-0" />
             Esse compromisso se repete. O que você mudar aqui vale só para este dia.
           </p>
@@ -230,7 +229,7 @@ function EventFormSheet({ event, dateISO, startTime, onClose, onCreate, onUpdate
         {error && <p className="text-xs text-ritmo-pink-deep">{error}</p>}
 
         {readOnly ? (
-          <p className="rounded-xl bg-ritmo-pink-tint px-3 py-2 text-xs text-ritmo-text/60">
+          <p className="ritmo-inset rounded-xl px-3 py-2 text-xs text-ritmo-muted">
             Essa agenda é só de leitura pra você — dá pra ver o compromisso aqui, mas alterar
             só no Google Agenda.
           </p>
@@ -238,7 +237,7 @@ function EventFormSheet({ event, dateISO, startTime, onClose, onCreate, onUpdate
           <button
             type="submit"
             disabled={!!busy}
-            className="min-h-11 w-full rounded-full bg-gradient-to-br from-ritmo-pink-deep to-ritmo-pink text-sm font-semibold text-white shadow-md shadow-ritmo-pink/30 transition-transform active:scale-[0.98] disabled:opacity-60"
+            className="ritmo-cta min-h-11 w-full rounded-full text-sm font-semibold"
           >
             {busy === "saving"
               ? "Salvando..."
@@ -252,7 +251,7 @@ function EventFormSheet({ event, dateISO, startTime, onClose, onCreate, onUpdate
       {isEditing &&
         !readOnly &&
         (confirmingDelete ? (
-          <div className="mt-3 rounded-xl bg-ritmo-pink-tint p-3 text-center">
+          <div className="ritmo-inset mt-3 rounded-xl p-3 text-center">
             <p className="text-sm text-ritmo-text">
               Excluir "{event.title}" da sua Google Agenda?
             </p>
@@ -261,7 +260,7 @@ function EventFormSheet({ event, dateISO, startTime, onClose, onCreate, onUpdate
                 type="button"
                 onClick={() => setConfirmingDelete(false)}
                 disabled={!!busy}
-                className="min-h-11 flex-1 rounded-full bg-white text-sm font-semibold text-ritmo-text/70 transition-transform active:scale-[0.98] disabled:opacity-60"
+                className="ritmo-ghost min-h-11 flex-1 rounded-full text-sm font-semibold text-ritmo-text/70 disabled:opacity-60"
               >
                 Cancelar
               </button>
@@ -280,7 +279,7 @@ function EventFormSheet({ event, dateISO, startTime, onClose, onCreate, onUpdate
             type="button"
             onClick={() => setConfirmingDelete(true)}
             disabled={!!busy}
-            className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-ritmo-pink-deep transition-colors hover:bg-ritmo-pink-light/60 disabled:opacity-60"
+            className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-ritmo-pink-deep transition-colors hover:bg-ritmo-pink-light disabled:opacity-60"
           >
             <Trash2 size={16} />
             Excluir compromisso

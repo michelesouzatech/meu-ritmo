@@ -3,22 +3,30 @@ import BottomNav from "./components/BottomNav.jsx";
 import HomeScreen from "./screens/HomeScreen.jsx";
 import TasksScreen, { TaskFormSheet } from "./screens/TasksScreen.jsx";
 import HabitsScreen, { HabitFormSheet } from "./screens/HabitsScreen.jsx";
-import WorkoutScreen, {
+import WorkoutScreen from "./screens/WorkoutScreen.jsx";
+import {
   ExerciseFormSheet,
   CargaSheet,
   BodyFatFormSheet,
   ImportReviewSheet,
-} from "./screens/WorkoutScreen.jsx";
+} from "./screens/GymTab.jsx";
+import {
+  RaceFormSheet,
+  RunPlanFormSheet,
+  RunSessionFormSheet,
+} from "./screens/runSheets.jsx";
 import ProfileScreen from "./screens/ProfileScreen.jsx";
 import LoginScreen from "./screens/LoginScreen.jsx";
 import ResetPasswordScreen from "./screens/ResetPasswordScreen.jsx";
 import CatMascot from "./components/CatMascot.jsx";
+import GlassBackdrop from "./components/GlassBackdrop.jsx";
 import EventFormSheet from "./components/EventFormSheet.jsx";
 import { todayISO } from "./lib/date.js";
 import { buildInitialWorkoutSeed } from "./lib/seedWorkout.js";
 import { supabase } from "./lib/supabase.js";
 import { clearGoogleToken, connectGoogleCalendar } from "./lib/googleCalendar.js";
 import { useGoogleCalendar } from "./hooks/useGoogleCalendar.js";
+import { useRunning } from "./hooks/useRunning.js";
 import * as db from "./lib/db.js";
 
 const emptyWorkout = { createdAt: null, photoName: null, photoDataUrl: null, exercises: [] };
@@ -48,6 +56,7 @@ function App() {
   const [habits, setHabits] = useState([]);
   const [workout, setWorkout] = useState(emptyWorkout);
   const [bodyFat, setBodyFat] = useState([]);
+  const [runningData, setRunningData] = useState(null);
 
   // Guarda a lista atual pra calcular posições sem depender do render.
   const exercisesRef = useRef([]);
@@ -112,6 +121,7 @@ function App() {
         setHabits(data.habits);
         setWorkout(data.workout);
         setBodyFat(data.bodyFat);
+        setRunningData(data.running);
       } catch {
         if (!cancelled) setSaveError(true);
       } finally {
@@ -132,6 +142,8 @@ function App() {
       .then(() => setSaveError(false))
       .catch(() => setSaveError(true));
   }, []);
+
+  const running = useRunning({ userId, save, initial: runningData });
 
   function addTask(data) {
     const task = { id: crypto.randomUUID(), done: false, ...data };
@@ -344,6 +356,25 @@ function App() {
     calendar.setFocusDate(form.dateISO);
   }
 
+  // A prova só vai pra agenda quando ela pede. Guardamos o id do compromisso
+  // pra não criar duplicado se ela tocar de novo.
+  async function addRaceToCalendar(race) {
+    const startTime = race.time || "07:00";
+    const endHour = Math.min(23, Number(startTime.slice(0, 2)) + 2);
+    const created = await calendar.createEvent({
+      title: race.name,
+      dateISO: race.date,
+      allDay: false,
+      startTime,
+      endTime: `${String(endHour).padStart(2, "0")}:00`,
+      location: race.location,
+      days: 1,
+      endDayOffset: 0,
+    });
+    if (created?.id) running.editRace(race.id, { calendarEventId: created.id });
+    calendar.setFocusDate(race.date);
+  }
+
   function handleLogout() {
     clearGoogleToken();
     supabase.auth.signOut();
@@ -363,25 +394,23 @@ function App() {
 
   if (loading) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-ritmo-bg">
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-3">
+        <GlassBackdrop />
         <CatMascot size={120} className="animate-pulse" />
-        <p className="text-sm text-ritmo-text/50">Carregando seus dados...</p>
+        <p className="text-sm text-ritmo-muted">Carregando seus dados...</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-full flex justify-center">
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-ritmo-bg">
-        <div className="absolute -left-16 -top-24 h-72 w-72 rounded-full bg-[#ff8ec8]/20 blur-3xl" />
-        <div className="absolute -right-20 top-1/3 h-64 w-64 rounded-full bg-[#c9a6ff]/20 blur-3xl" />
-        <div className="absolute -left-14 bottom-16 h-72 w-72 rounded-full bg-[#ffc2e3]/25 blur-3xl" />
-      </div>
+      <GlassBackdrop />
       <div className="w-full max-w-md px-5 pt-8 pb-28">
         {saveError && (
-          <div className="mb-4 rounded-xl bg-ritmo-pink-light px-3 py-2 text-xs text-ritmo-pink-deep">
-            Não deu pra salvar na nuvem agora. Confira sua internet — o que você
-            fez continua na tela, mas pode não estar salvo.
+          <div className="ritmo-card mb-4 rounded-xl px-3 py-2 text-xs text-ritmo-text">
+            <span className="font-semibold text-ritmo-pink-deep">Atenção:</span> não
+            deu pra salvar na nuvem agora. Confira sua internet — o que você fez
+            continua na tela, mas pode não estar salvo.
           </div>
         )}
 
@@ -391,6 +420,7 @@ function App() {
             habits={habits}
             user={session.user}
             calendar={calendar}
+            running={running}
             onToggleTask={toggleTask}
             onConnectCalendar={connectGoogleCalendar}
             onRefreshCalendar={calendar.refresh}
@@ -422,18 +452,37 @@ function App() {
         )}
         {tab === "workout" && (
           <WorkoutScreen
-            workout={workout}
-            bodyFat={bodyFat}
-            onAddExercise={() => setSheet("exercise")}
-            onUpdateExercise={updateExercise}
-            onDeleteExercise={deleteExercise}
-            onOpenCarga={(exerciseId) => setSheet({ type: "carga", exerciseId })}
-            onSetPhoto={setWorkoutPhoto}
-            onNewCycle={startNewWorkoutCycle}
-            onAddBodyFat={() => setSheet("bodyfat")}
-            onDeleteBodyFat={deleteBodyFat}
-            onImportParsed={(groups) => setSheet({ type: "import", groups })}
-            onReorderExercises={reorderExercises}
+            gym={{
+              workout,
+              bodyFat,
+              onAddExercise: () => setSheet("exercise"),
+              onUpdateExercise: updateExercise,
+              onDeleteExercise: deleteExercise,
+              onOpenCarga: (exerciseId) => setSheet({ type: "carga", exerciseId }),
+              onSetPhoto: setWorkoutPhoto,
+              onNewCycle: startNewWorkoutCycle,
+              onAddBodyFat: () => setSheet("bodyfat"),
+              onDeleteBodyFat: deleteBodyFat,
+              onImportParsed: (groups) => setSheet({ type: "import", groups }),
+              onReorderExercises: reorderExercises,
+            }}
+            running={{
+              races: running.races,
+              plan: running.plan,
+              sessions: running.sessions,
+              calendarReady: calendar.status === "ready",
+              onAddRace: () => setSheet({ type: "race", race: null }),
+              onEditRace: (race) => setSheet({ type: "race", race }),
+              onDeleteRace: running.deleteRace,
+              onAddToCalendar: addRaceToCalendar,
+              onAddPlan: () => setSheet({ type: "runPlan", plan: null }),
+              onEditPlan: (plan) => setSheet({ type: "runPlan", plan }),
+              onArchivePlan: running.archivePlan,
+              onAddSession: (dateISO) =>
+                setSheet({ type: "runSession", session: null, dateISO }),
+              onEditSession: (session) => setSheet({ type: "runSession", session }),
+              onDeleteSession: running.deleteSession,
+            }}
           />
         )}
         {tab === "profile" && (
@@ -499,6 +548,40 @@ function App() {
           groups={sheet.groups}
           onClose={() => setSheet(null)}
           onConfirm={importParsedWorkout}
+        />
+      )}
+      {sheet?.type === "race" && (
+        <RaceFormSheet
+          race={sheet.race}
+          onClose={() => setSheet(null)}
+          onSave={(data) =>
+            sheet.race ? running.editRace(sheet.race.id, data) : running.addRace(data)
+          }
+          onDelete={running.deleteRace}
+        />
+      )}
+      {sheet?.type === "runPlan" && (
+        <RunPlanFormSheet
+          plan={sheet.plan}
+          races={running.races}
+          onClose={() => setSheet(null)}
+          onSave={(data) =>
+            sheet.plan ? running.editPlan(sheet.plan.id, data) : running.addPlan(data)
+          }
+        />
+      )}
+      {sheet?.type === "runSession" && (
+        <RunSessionFormSheet
+          session={sheet.session}
+          dateISO={sheet.dateISO}
+          plan={running.plan}
+          onClose={() => setSheet(null)}
+          onSave={(data) =>
+            sheet.session
+              ? running.editSession(sheet.session.id, data)
+              : running.addSession(data)
+          }
+          onDelete={running.deleteSession}
         />
       )}
     </div>
