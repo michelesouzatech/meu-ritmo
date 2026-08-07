@@ -7,8 +7,8 @@ function NavItem({ icon: Icon, label, active, onClick }) {
       onClick={onClick}
       className={`group flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ritmo-pink ${
         active
-          ? "ritmo-glass-pill text-ritmo-lilac-ink"
-          : "text-ritmo-muted hover:text-ritmo-lilac-ink"
+          ? "ritmo-glass-pill text-ritmo-pink-deep"
+          : "text-ritmo-muted hover:text-ritmo-ink-soft"
       }`}
     >
       <Icon size={22} strokeWidth={active ? 2.4 : 2} />

@@ -3,25 +3,22 @@
 @theme {
   --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
 
-  /* Rosa: reservado pra ação principal, estado ativo e UM destaque por tela.
-     Não é mais a cor de texto, de borda nem de selo — pra quando ele aparecer,
-     querer dizer alguma coisa. */
+  /* O app tem UM matiz. Rosa aparece em ação principal, estado ativo e aviso —
+     e em mais nada. Antes existia também um lilás pra "informação secundária",
+     mas duas famílias de cor numa tela de celular cansam: o que era lilás
+     agora é cinza. Cor no app quer dizer "isso aqui é diferente". */
   --color-ritmo-pink-deep: #b0116a;
   --color-ritmo-pink: #e0218a;
-  --color-ritmo-pink-soft: #ff6fb5;
   --color-ritmo-pink-light: #ffd9ec;
-  --color-ritmo-pink-tint: #fff0f7;
 
-  /* Lilás: informação secundária — selos, contadores, chips, aba ativa. */
-  --color-ritmo-lilac: #f4ebff;
-  --color-ritmo-lilac-soft: #e9ddfb;
-  --color-ritmo-lilac-ink: #6b4fa0;
-
-  /* Neutros quentes: texto, bordas e divisórias. Tudo isso era rosa antes. */
-  --color-ritmo-text: #241220;
-  --color-ritmo-muted: #7d6d79;
-  --color-ritmo-line: #ebe1ea;
-  --color-ritmo-bg: #fdf8fc;
+  /* Neutros quentes. O cinza puxa de leve pro magenta do acento em vez de ser
+     um cinza de fábrica — combina sem competir. */
+  --color-ritmo-text: #1f1a1d;
+  --color-ritmo-ink-soft: #5f555c;
+  --color-ritmo-muted: #797075;
+  --color-ritmo-line: #e8e4e7;
+  --color-ritmo-hover: #f2eff1;
+  --color-ritmo-bg: #faf9fa;
 }
 
 /* ---------------------------------------------------------------------------
@@ -56,7 +53,7 @@
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-top-color: rgba(255, 255, 255, 1);
   box-shadow:
-    0 14px 40px rgba(107, 79, 160, 0.16),
+    0 14px 40px rgba(45, 33, 41, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 1),
     inset 0 -10px 20px rgba(255, 255, 255, 0.4);
 }
@@ -67,17 +64,16 @@
   backdrop-filter: blur(44px) saturate(190%);
   border-top: 1px solid rgba(255, 255, 255, 0.95);
   box-shadow:
-    0 -10px 30px rgba(107, 79, 160, 0.14),
+    0 -10px 30px rgba(45, 33, 41, 0.09),
     inset 0 1px 0 rgba(255, 255, 255, 1);
 }
 
-/* Selo/chip de informação secundária. Sem desfoque próprio: vive dentro de
-   um card ou da navegação, que já desfocam. */
+/* Selo/chip de informação secundária — era lavanda cheia, virou um cinza de
+   6% que só marca o limite do selo. Sem desfoque próprio: vive dentro de um
+   card ou da navegação, que já desfocam. */
 .ritmo-glass-pill {
-  background: rgba(233, 221, 251, 0.85);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  background: rgba(45, 33, 41, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
 }
 
 .ritmo-inset {
@@ -116,13 +112,10 @@
 
 /* Ação principal: vidro fosco tingido de rosa claro, não um bloco de cor.
    O texto é rosa profundo porque branco não sobrevive num rosa desse tom —
-   nesse fundo ele dá 4,8:1 de contraste, contra 2,1:1 do branco. */
+   nesse fundo ele dá 5,7:1 de contraste, contra 2,1:1 do branco.
+   O degradê saiu: dois tons onde um resolve é decoração. */
 .ritmo-cta {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 224, 240, 0.95),
-    rgba(255, 200, 228, 0.92)
-  );
+  background: rgba(255, 228, 241, 0.94);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.9);
@@ -163,10 +156,13 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Fundo — as manchas que o vidro desfoca
+   Fundo — sombreado, não cor
 
-   O desfoque fica no contêiner, não em cada mancha: assim o navegador
-   desfoca a camada uma vez só, e as manchas podem se mover de graça.
+   Eram cinco matizes em movimento; sobraram duas manchas quase neutras e
+   paradas. O vidro precisa de alguma variação embaixo pra ter o que refratar,
+   senão vira cartão branco com desfoque — mas variação de claro/escuro basta,
+   não precisa de cor. E cor que se mexe no fundo do olho o tempo todo é o que
+   mais cansa numa tela que se usa todo dia.
 --------------------------------------------------------------------------- */
 
 .ritmo-backdrop {
@@ -181,29 +177,12 @@
 .ritmo-backdrop-inner {
   position: absolute;
   inset: -12%;
-  filter: blur(72px);
+  filter: blur(80px);
 }
 
 .ritmo-blob {
   position: absolute;
   border-radius: 9999px;
-  animation: ritmo-drift 28s ease-in-out infinite;
-}
-
-@keyframes ritmo-drift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(5%, -4%, 0) scale(1.1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ritmo-blob {
-    animation: none;
-  }
 }
 
 /* ---------------------------------------------------------------------------

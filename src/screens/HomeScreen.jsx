@@ -3,7 +3,7 @@ import DayHabitsRing from "../components/DayHabitsRing.jsx";
 import AgendaCard from "../components/AgendaCard.jsx";
 import { todayISO, daysBetween, addDays } from "../lib/date.js";
 import { eventsOnDay } from "../lib/googleCalendar.js";
-import { habitProgress } from "./HabitsScreen.jsx";
+import { habitProgress } from "../lib/habitProgress.js";
 import { joinNamesCapped } from "../lib/text.js";
 import { daysUntil, nextRace, weekProgress } from "../lib/running.js";
 
@@ -225,7 +225,7 @@ function HomeScreen({
           <button
             type="button"
             aria-label="Notificações"
-            className="relative flex h-11 w-11 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+            className="relative flex h-11 w-11 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
           >
             <Bell size={20} />
             <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-ritmo-pink ring-2 ring-ritmo-bg" />
@@ -240,10 +240,10 @@ function HomeScreen({
               <img
                 src={user.user_metadata.avatar_url}
                 alt=""
-                className="h-11 w-11 rounded-full object-cover shadow-sm shadow-ritmo-pink/40"
+                className="h-11 w-11 rounded-full object-cover shadow-sm shadow-ritmo-text/10"
               />
             ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-ritmo-pink text-sm font-semibold text-white shadow-sm shadow-ritmo-pink/40">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-ritmo-pink-deep text-sm font-semibold text-white shadow-sm shadow-ritmo-text/10">
                 {initial(user)}
               </div>
             )}
@@ -252,7 +252,7 @@ function HomeScreen({
       </header>
 
       <section className="ritmo-glass mb-5 rounded-2xl px-4 py-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-ritmo-lilac-ink">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-ritmo-ink-soft">
           Seu resumo de hoje
         </p>
         {lines.map((line, i) => (
@@ -281,7 +281,7 @@ function HomeScreen({
         <button
           type="button"
           onClick={() => onNavigate("tasks")}
-          className="min-h-11 rounded-full px-3 text-sm font-medium text-ritmo-lilac-ink transition-colors hover:bg-ritmo-lilac focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ritmo-pink"
+          className="min-h-11 rounded-full px-3 text-sm font-medium text-ritmo-ink-soft transition-colors hover:bg-ritmo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ritmo-pink"
         >
           ver todas
         </button>
@@ -306,7 +306,7 @@ function HomeScreen({
                   onChange={() => onToggleTask(task.id)}
                   className="peer sr-only"
                 />
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-ritmo-pink transition-colors peer-checked:bg-ritmo-pink">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-ritmo-line transition-colors peer-checked:border-ritmo-pink-deep peer-checked:bg-ritmo-pink-deep">
                   <Check size={12} strokeWidth={3} className="text-transparent peer-checked:text-white" />
                 </span>
                 {task.urgent && (
@@ -329,7 +329,7 @@ function HomeScreen({
         <button
           type="button"
           onClick={() => onNavigate("habits")}
-          className="min-h-11 rounded-full px-3 text-sm font-medium text-ritmo-lilac-ink transition-colors hover:bg-ritmo-lilac focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ritmo-pink"
+          className="min-h-11 rounded-full px-3 text-sm font-medium text-ritmo-ink-soft transition-colors hover:bg-ritmo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ritmo-pink"
         >
           ver todos
         </button>

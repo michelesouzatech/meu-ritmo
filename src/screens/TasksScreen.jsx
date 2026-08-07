@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AlertTriangle, Check } from "lucide-react";
 import Sheet from "../components/Sheet.jsx";
 import AddButton from "../components/AddButton.jsx";
 import SwipeToDelete from "../components/SwipeToDelete.jsx";
+import InsightsPanel from "../components/InsightsPanel.jsx";
 import { todayISO, formatDatePtBr } from "../lib/date.js";
+import { buildTaskInsights } from "../lib/insights.js";
 
 export function TaskFormSheet({ onClose, onSave }) {
   const [title, setTitle] = useState("");
@@ -66,7 +68,7 @@ export function TaskFormSheet({ onClose, onSave }) {
             className="peer sr-only"
           />
           <span
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-ritmo-pink transition-colors peer-checked:bg-ritmo-pink"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-ritmo-line transition-colors peer-checked:border-ritmo-pink-deep peer-checked:bg-ritmo-pink-deep"
             aria-hidden
           >
             <AlertTriangle
@@ -99,7 +101,7 @@ function TaskItem({ task, onToggle, onDelete }) {
             className="peer sr-only"
           />
           <span
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-ritmo-pink transition-colors peer-checked:bg-ritmo-pink"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-ritmo-line transition-colors peer-checked:border-ritmo-pink-deep peer-checked:bg-ritmo-pink-deep"
             aria-hidden
           >
             <Check
@@ -123,7 +125,7 @@ function TaskItem({ task, onToggle, onDelete }) {
             className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${
               isOverdue
                 ? "bg-ritmo-pink-light text-ritmo-pink-deep"
-                : "ritmo-glass-pill text-ritmo-lilac-ink"
+                : "ritmo-glass-pill text-ritmo-ink-soft"
             }`}
           >
             {isOverdue
@@ -149,6 +151,7 @@ function TasksScreen({ tasks, onToggle, onDelete, onAdd }) {
       return a.date.localeCompare(b.date);
     });
   const done = tasks.filter((t) => t.done);
+  const insights = useMemo(() => buildTaskInsights(tasks), [tasks]);
 
   return (
     <div>
@@ -171,6 +174,8 @@ function TasksScreen({ tasks, onToggle, onDelete, onAdd }) {
           Toque no botão + para adicionar sua primeira tarefa.
         </p>
       )}
+
+      <InsightsPanel items={insights} className="mb-4" />
 
       {pending.length > 0 && (
         <div className="mb-6 space-y-3">

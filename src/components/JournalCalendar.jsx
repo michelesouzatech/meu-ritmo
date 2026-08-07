@@ -37,7 +37,7 @@ function JournalCalendar({ entries, selectedDate, onSelectDate }) {
           type="button"
           onClick={() => goToMonth(-1)}
           aria-label="Mês anterior"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
         >
           <ChevronLeft size={18} />
         </button>
@@ -46,7 +46,7 @@ function JournalCalendar({ entries, selectedDate, onSelectDate }) {
           type="button"
           onClick={() => goToMonth(1)}
           aria-label="Próximo mês"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
         >
           <ChevronRight size={18} />
         </button>
@@ -79,9 +79,9 @@ function JournalCalendar({ entries, selectedDate, onSelectDate }) {
                 aria-current={isSelected ? "date" : undefined}
                 className="mx-auto flex h-9 w-9 items-center justify-center rounded-full text-xs font-medium transition-transform disabled:opacity-25 enabled:hover:scale-105"
                 style={{
-                  backgroundColor: isSelected ? "var(--color-ritmo-lilac)" : "transparent",
+                  backgroundColor: isSelected ? "var(--color-ritmo-hover)" : "transparent",
                   border: isSelected
-                    ? "1.5px solid var(--color-ritmo-lilac-ink)"
+                    ? "1.5px solid var(--color-ritmo-ink-soft)"
                     : isToday
                       ? "1.5px solid var(--color-ritmo-pink)"
                       : "1.5px solid transparent",

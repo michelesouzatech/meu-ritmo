@@ -77,7 +77,7 @@ function ConnectPrompt({ isReconnect, onConnect }) {
   return (
     <CardShell>
       <div className="flex flex-col items-center text-center">
-        <div className="ritmo-glass-pill mb-2 flex h-11 w-11 items-center justify-center rounded-full text-ritmo-lilac-ink">
+        <div className="ritmo-glass-pill mb-2 flex h-11 w-11 items-center justify-center rounded-full text-ritmo-ink-soft">
           <CalendarDays size={20} />
         </div>
         <p className="text-sm text-ritmo-muted">
@@ -111,7 +111,7 @@ function ViewToggle({ view, onChange }) {
           onClick={() => onChange(value)}
           aria-pressed={view === value}
           className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-            view === value ? "ritmo-glass-pill text-ritmo-lilac-ink" : "text-ritmo-muted"
+            view === value ? "ritmo-glass-pill text-ritmo-pink-deep" : "text-ritmo-muted"
           }`}
         >
           {label}
@@ -137,7 +137,7 @@ function DayHeader({ dateISO, isToday, isSelected, onSelect }) {
       <span
         className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold transition-colors ${
           isSelected
-            ? "bg-ritmo-pink text-white shadow-sm shadow-ritmo-pink/40"
+            ? "bg-ritmo-pink-deep text-white shadow-sm shadow-ritmo-text/10"
             : isToday
               ? "text-ritmo-pink-deep"
               : "text-ritmo-text/70"
@@ -330,7 +330,7 @@ function WeekView({ days, events, tasks, today, focusDate, onSelect, onOpenEvent
                   type="button"
                   onClick={(e) => handleColumnClick(dateISO, e)}
                   aria-label={`Novo compromisso em ${formatDayLabel(dateISO)}`}
-                  className={`absolute inset-0 ${dateISO === focusDate ? "bg-ritmo-lilac/70" : ""}`}
+                  className={`absolute inset-0 ${dateISO === focusDate ? "bg-ritmo-hover" : ""}`}
                 />
                 {layouts[index].map((block) => (
                   <EventBlock key={block.event.id} block={block} onOpen={onOpenEvent} />
@@ -370,12 +370,12 @@ function DayCell({ dateISO, day, counts, isToday, isSelected, onSelect }) {
       onClick={() => onSelect(dateISO)}
       aria-label={`${day}, ${eventCount} compromisso${eventCount === 1 ? "" : "s"} e ${taskCount} tarefa${taskCount === 1 ? "" : "s"}`}
       aria-current={isSelected ? "date" : undefined}
-      className="flex h-11 w-full flex-col items-center justify-center gap-0.5 rounded-xl transition-colors hover:bg-ritmo-lilac"
+      className="flex h-11 w-full flex-col items-center justify-center gap-0.5 rounded-xl transition-colors hover:bg-ritmo-hover"
     >
       <span
         className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium transition-colors ${
           isSelected
-            ? "bg-ritmo-pink text-white shadow-sm shadow-ritmo-pink/40"
+            ? "bg-ritmo-pink-deep text-white shadow-sm shadow-ritmo-text/10"
             : isToday
               ? "text-ritmo-pink-deep"
               : "text-ritmo-text/80"
@@ -440,11 +440,11 @@ function EventRow({ event, isPast, onOpen }) {
       <button
         type="button"
         onClick={() => onOpen(event)}
-        className={`flex w-full items-start gap-3 rounded-xl py-1 text-left transition-colors hover:bg-ritmo-lilac ${
+        className={`flex w-full items-start gap-3 rounded-xl py-1 text-left transition-colors hover:bg-ritmo-hover ${
           isPast ? "opacity-45" : ""
         }`}
       >
-        <span className="w-14 shrink-0 pt-0.5 text-xs font-semibold text-ritmo-lilac-ink">
+        <span className="w-14 shrink-0 pt-0.5 text-xs font-semibold text-ritmo-ink-soft">
           {formatEventTime(event)}
         </span>
         <span
@@ -475,14 +475,14 @@ function TaskRow({ task, onToggle }) {
       <button
         type="button"
         onClick={() => onToggle(task.id)}
-        className="flex w-full items-center gap-3 rounded-xl py-1 text-left transition-colors hover:bg-ritmo-lilac"
+        className="flex w-full items-center gap-3 rounded-xl py-1 text-left transition-colors hover:bg-ritmo-hover"
       >
         <span className="w-14 shrink-0 text-xs font-medium text-ritmo-text/45">tarefa</span>
         <span className="min-w-0 flex-1 border-l-2 border-ritmo-text/15 pl-3">
           <span className="flex items-center gap-2">
             <span
               className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 border-ritmo-pink ${
-                task.done ? "bg-ritmo-pink" : ""
+                task.done ? "bg-ritmo-pink-deep" : ""
               }`}
               aria-hidden
             >
@@ -584,7 +584,7 @@ function AgendaCard({
               <button
                 type="button"
                 onClick={() => onFocusDate(today)}
-                className="min-h-11 rounded-full px-3 text-sm font-medium text-ritmo-lilac-ink transition-colors hover:bg-ritmo-lilac"
+                className="min-h-11 rounded-full px-3 text-sm font-medium text-ritmo-ink-soft transition-colors hover:bg-ritmo-hover"
               >
                 hoje
               </button>
@@ -593,7 +593,7 @@ function AgendaCard({
               type="button"
               onClick={onRefresh}
               aria-label="Atualizar agenda"
-              className="flex h-11 w-11 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
             >
               <RefreshCw size={16} />
             </button>
@@ -619,7 +619,7 @@ function AgendaCard({
           <button
             type="button"
             onClick={onRefresh}
-            className="mx-auto mt-3 flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold text-ritmo-lilac-ink transition-colors hover:bg-ritmo-lilac"
+            className="mx-auto mt-3 flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold text-ritmo-ink-soft transition-colors hover:bg-ritmo-hover"
           >
             <RefreshCw size={16} />
             Tentar de novo
@@ -634,7 +634,7 @@ function AgendaCard({
               type="button"
               onClick={() => goTo(-1)}
               aria-label={view === "week" ? "Semana anterior" : "Mês anterior"}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
             >
               <ChevronLeft size={18} />
             </button>
@@ -645,7 +645,7 @@ function AgendaCard({
               type="button"
               onClick={() => goTo(1)}
               aria-label={view === "week" ? "Próxima semana" : "Próximo mês"}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
             >
               <ChevronRight size={18} />
             </button>
@@ -682,7 +682,7 @@ function AgendaCard({
                 {formatDayLabel(focusDate)}
               </p>
               {counts.length > 0 && (
-                <span className="ritmo-glass-pill shrink-0 rounded-full px-2 py-1 text-xs font-medium text-ritmo-lilac-ink">
+                <span className="ritmo-glass-pill shrink-0 rounded-full px-2 py-1 text-xs font-medium text-ritmo-ink-soft">
                   {counts.join(" · ")}
                 </span>
               )}
@@ -723,7 +723,7 @@ function AgendaCard({
               href="https://calendar.google.com"
               target="_blank"
               rel="noreferrer"
-              className="mt-1 flex min-h-11 items-center justify-center gap-1.5 rounded-full text-xs font-medium text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+              className="mt-1 flex min-h-11 items-center justify-center gap-1.5 rounded-full text-xs font-medium text-ritmo-muted transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
             >
               Abrir no Google Agenda
               <ExternalLink size={12} />

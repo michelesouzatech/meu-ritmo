@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CalendarPlus,
   ChevronDown,
@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import AddButton from "../components/AddButton.jsx";
 import SwipeToDelete from "../components/SwipeToDelete.jsx";
+import InsightsPanel from "../components/InsightsPanel.jsx";
+import { buildRunningInsights } from "../lib/insights.js";
 import { todayISO, formatDatePtBr, toISODate } from "../lib/date.js";
 import { formatDistance, formatDuration, formatPaceLabel, paceGap } from "../lib/pace.js";
 import {
@@ -62,7 +64,7 @@ function NextRaceCard({ race, onEdit, onAddToCalendar, calendarReady }) {
     <section className="ritmo-glass mb-4 rounded-2xl p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-ritmo-lilac-ink">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ritmo-ink-soft">
             Próxima prova
           </p>
           <h2 className="mt-1 truncate text-lg font-semibold text-ritmo-text">{race.name}</h2>
@@ -71,7 +73,7 @@ function NextRaceCard({ race, onEdit, onAddToCalendar, calendarReady }) {
           type="button"
           onClick={() => onEdit(race)}
           aria-label="Editar prova"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
         >
           <Pencil size={15} />
         </button>
@@ -121,7 +123,7 @@ function NextRaceCard({ race, onEdit, onAddToCalendar, calendarReady }) {
           type="button"
           onClick={handleAddToCalendar}
           disabled={addingToCalendar}
-          className="ritmo-ghost mt-3 flex min-h-9 w-full items-center justify-center gap-1.5 rounded-full text-xs font-semibold text-ritmo-lilac-ink disabled:opacity-60"
+          className="ritmo-ghost mt-3 flex min-h-9 w-full items-center justify-center gap-1.5 rounded-full text-xs font-semibold text-ritmo-ink-soft disabled:opacity-60"
         >
           <CalendarPlus size={14} />
           {addingToCalendar ? "Adicionando..." : "Adicionar à Google Agenda"}
@@ -174,7 +176,7 @@ function PlanWeekStrip({ sessions, planId, onPickDay }) {
               }
               className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-transform disabled:opacity-30 enabled:hover:scale-105"
               style={{
-                backgroundColor: ran ? "var(--color-ritmo-pink)" : "transparent",
+                backgroundColor: ran ? "var(--color-ritmo-pink-deep)" : "transparent",
                 color: ran ? "#fff" : "var(--color-ritmo-text)",
                 border: isToday
                   ? "1.5px solid var(--color-ritmo-pink)"
@@ -205,7 +207,7 @@ function ConsistencyBar({ done, target }) {
       </div>
       <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-ritmo-line">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-ritmo-pink to-ritmo-pink-soft transition-[width] duration-500"
+          className="h-full rounded-full bg-ritmo-pink transition-[width] duration-500"
           style={{ width: `${ratio * 100}%` }}
         />
       </div>
@@ -230,14 +232,14 @@ function PlanCard({ plan, race, sessions, onEdit, onArchive, onPickDay }) {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-lilac-ink">
+          <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-ink-soft">
             {plan.weeklyTarget}x/semana
           </span>
           <button
             type="button"
             onClick={() => onEdit(plan)}
             aria-label="Editar plano"
-            className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
           >
             <Pencil size={14} />
           </button>
@@ -284,7 +286,7 @@ function SessionRow({ session, goalPace, onEdit, onDelete }) {
           <p className="text-sm font-medium text-ritmo-text">
             {formatDatePtBr(session.date)}
             {session.kind && (
-              <span className="ml-2 text-xs font-normal text-ritmo-lilac-ink">
+              <span className="ml-2 text-xs font-normal text-ritmo-ink-soft">
                 {session.kind}
               </span>
             )}
@@ -378,7 +380,7 @@ function Collapsible({ title, count, children, defaultOpen = false }) {
       >
         <h2 className="text-base font-semibold text-ritmo-text">{title}</h2>
         <span className="flex shrink-0 items-center gap-2">
-          <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-lilac-ink">
+          <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-ink-soft">
             {count}
           </span>
           <ChevronDown
@@ -423,6 +425,11 @@ function RunningTab({
 
   const laterRaces = upcoming.filter((r) => r.id !== next?.id);
 
+  const insights = useMemo(
+    () => buildRunningInsights({ races, plan, sessions }),
+    [races, plan, sessions],
+  );
+
   return (
     <div>
       <header className="mb-4 flex items-center justify-between gap-3">
@@ -443,7 +450,7 @@ function RunningTab({
         />
       ) : (
         <section className="ritmo-card mb-4 rounded-2xl p-4 text-center">
-          <div className="ritmo-glass-pill mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full text-ritmo-lilac-ink">
+          <div className="ritmo-glass-pill mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full text-ritmo-ink-soft">
             <Flag size={20} />
           </div>
           <p className="text-sm text-ritmo-muted">
@@ -479,7 +486,7 @@ function RunningTab({
           <button
             type="button"
             onClick={onAddPlan}
-            className="ritmo-ghost mx-auto mt-3 flex min-h-9 items-center gap-1.5 rounded-full px-4 text-xs font-semibold text-ritmo-lilac-ink"
+            className="ritmo-ghost mx-auto mt-3 flex min-h-9 items-center gap-1.5 rounded-full px-4 text-xs font-semibold text-ritmo-ink-soft"
           >
             <Target size={14} />
             Criar plano de treino
@@ -492,7 +499,7 @@ function RunningTab({
           <button
             type="button"
             onClick={onAddRace}
-            className="ritmo-ghost flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-full text-xs font-semibold text-ritmo-lilac-ink"
+            className="ritmo-ghost flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-full text-xs font-semibold text-ritmo-ink-soft"
           >
             <Flag size={14} />
             Nova prova
@@ -501,7 +508,7 @@ function RunningTab({
             <button
               type="button"
               onClick={onAddPlan}
-              className="ritmo-ghost flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-full text-xs font-semibold text-ritmo-lilac-ink"
+              className="ritmo-ghost flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-full text-xs font-semibold text-ritmo-ink-soft"
             >
               <Target size={14} />
               Novo plano
@@ -509,6 +516,8 @@ function RunningTab({
           )}
         </div>
       )}
+
+      <InsightsPanel items={insights} className="mb-4" />
 
       {recentSessions.length > 0 && (
         <Collapsible title="Últimas corridas" count={sessions.length} defaultOpen>

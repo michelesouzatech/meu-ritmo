@@ -17,7 +17,18 @@ function StatCard({ label, value }) {
   );
 }
 
-function ProfileScreen({ user, tasks, habits, workout, bodyFat, calendar, onLogout, onNavigate }) {
+function ProfileScreen({
+  user,
+  tasks,
+  habits,
+  workout,
+  bodyFat,
+  running,
+  journal,
+  calendar,
+  onLogout,
+  onNavigate,
+}) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -61,7 +72,7 @@ function ProfileScreen({ user, tasks, habits, workout, bodyFat, calendar, onLogo
       <button
         type="button"
         onClick={() => onNavigate("home")}
-        className="mb-4 flex min-h-11 items-center gap-1 rounded-full pr-3 text-sm font-medium text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+        className="mb-4 flex min-h-11 items-center gap-1 rounded-full pr-3 text-sm font-medium text-ritmo-muted transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
       >
         <ArrowLeft size={20} />
         Voltar
@@ -73,7 +84,7 @@ function ProfileScreen({ user, tasks, habits, workout, bodyFat, calendar, onLogo
             <img
               src={user.user_metadata.avatar_url}
               alt=""
-              className="h-24 w-24 rounded-full object-cover shadow-md shadow-ritmo-pink/30"
+              className="h-24 w-24 rounded-full object-cover shadow-md shadow-ritmo-text/10"
             />
           ) : (
             <CatMascot size={120} />
@@ -83,7 +94,7 @@ function ProfileScreen({ user, tasks, habits, workout, bodyFat, calendar, onLogo
             aria-label="Trocar foto"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-ritmo-pink text-white shadow-md shadow-ritmo-pink/40 transition-transform active:scale-95 disabled:opacity-60"
+            className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-ritmo-pink-deep text-white shadow-md shadow-ritmo-text/10 transition-transform active:scale-95 disabled:opacity-60"
           >
             <Camera size={16} />
           </button>
@@ -122,6 +133,8 @@ function ProfileScreen({ user, tasks, habits, workout, bodyFat, calendar, onLogo
         habits={habits}
         workout={workout}
         bodyFat={bodyFat}
+        running={running}
+        journal={journal}
         calendar={calendar}
       />
     </div>

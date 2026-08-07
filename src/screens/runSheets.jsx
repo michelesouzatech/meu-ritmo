@@ -51,7 +51,7 @@ function DistancePicker({ value, onChange }) {
               className={`min-h-9 rounded-full px-3 text-xs font-semibold transition-colors ${
                 active
                   ? "ritmo-cta"
-                  : "ritmo-glass-pill text-ritmo-lilac-ink hover:brightness-95"
+                  : "ritmo-glass-pill text-ritmo-ink-soft hover:brightness-95"
               }`}
             >
               {option.label}
@@ -193,7 +193,7 @@ export function RaceFormSheet({ race, onClose, onSave, onDelete }) {
         {/* Só faz sentido preencher resultado de prova que já aconteceu. */}
         {(isPast || race?.resultTime) && (
           <div className="ritmo-inset space-y-4 rounded-xl p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ritmo-lilac-ink">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ritmo-ink-soft">
               Resultado
             </p>
 
@@ -370,7 +370,7 @@ export function RunPlanFormSheet({ plan, races, onClose, onSave }) {
                 className={`min-h-11 min-w-11 rounded-full px-3 text-sm font-semibold transition-colors ${
                   Number(weeklyTarget) === n
                     ? "ritmo-cta"
-                    : "ritmo-glass-pill text-ritmo-lilac-ink hover:brightness-95"
+                    : "ritmo-glass-pill text-ritmo-ink-soft hover:brightness-95"
                 }`}
               >
                 {n}x
@@ -529,7 +529,7 @@ export function RunSessionFormSheet({ session, dateISO, plan, onClose, onSave, o
                 className={`min-h-9 rounded-full px-3 text-xs font-semibold transition-colors ${
                   kind === option
                     ? "ritmo-cta"
-                    : "ritmo-glass-pill text-ritmo-lilac-ink hover:brightness-95"
+                    : "ritmo-glass-pill text-ritmo-ink-soft hover:brightness-95"
                 }`}
               >
                 {option}

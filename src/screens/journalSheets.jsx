@@ -23,7 +23,7 @@ function Choice({ active, icon: Icon, children, onClick }) {
       onClick={onClick}
       aria-pressed={active}
       className={`flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors ${
-        active ? "ritmo-cta" : "ritmo-glass-pill text-ritmo-lilac-ink hover:brightness-95"
+        active ? "ritmo-cta" : "ritmo-glass-pill text-ritmo-ink-soft hover:brightness-95"
       }`}
     >
       {Icon && <Icon size={14} />}
@@ -179,7 +179,7 @@ export function JournalEntryFormSheet({
                     {option.emoji}
                   </span>
                   <span
-                    className={`text-[10px] font-medium ${active ? "text-ritmo-lilac-ink" : "text-ritmo-muted"}`}
+                    className={`text-[10px] font-medium ${active ? "text-ritmo-ink-soft" : "text-ritmo-muted"}`}
                   >
                     {option.label}
                   </span>

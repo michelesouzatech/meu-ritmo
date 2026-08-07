@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Plus,
   Trash2,
@@ -32,7 +32,9 @@ import { CSS } from "@dnd-kit/utilities";
 import Sheet from "../components/Sheet.jsx";
 import AddButton from "../components/AddButton.jsx";
 import SwipeToDelete from "../components/SwipeToDelete.jsx";
+import InsightsPanel from "../components/InsightsPanel.jsx";
 import { todayISO, daysBetween, formatDatePtBr } from "../lib/date.js";
+import { buildGymInsights } from "../lib/insights.js";
 
 export function ExerciseFormSheet({ onClose, onSave, groups }) {
   const [group, setGroup] = useState("");
@@ -172,7 +174,7 @@ export function CargaSheet({ exercise, onClose, onAdd, onDelete }) {
                   type="button"
                   aria-label="Excluir registro"
                   onClick={() => onDelete(log.id)}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
                 >
                   <Trash2 size={13} />
                 </button>
@@ -298,7 +300,7 @@ export function ImportReviewSheet({ groups: initialGroups, onClose, onConfirm })
                 type="button"
                 aria-label="Remover grupo"
                 onClick={() => removeGroup(gi)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
               >
                 <Trash2 size={14} />
               </button>
@@ -335,7 +337,7 @@ export function ImportReviewSheet({ groups: initialGroups, onClose, onConfirm })
                     type="button"
                     aria-label="Remover exercício"
                     onClick={() => removeRow(gi, ri)}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -372,7 +374,7 @@ function ExerciseItem({ exercise, onOpenCarga, onUpdate, onDelete }) {
           type="button"
           aria-label="Excluir exercício"
           onClick={onDelete}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
         >
           <Trash2 size={13} />
         </button>
@@ -387,7 +389,7 @@ function ExerciseItem({ exercise, onOpenCarga, onUpdate, onDelete }) {
         <button
           type="button"
           onClick={onOpenCarga}
-          className="ritmo-glass-pill flex min-h-8 max-w-[40%] shrink-0 items-center justify-center truncate whitespace-nowrap rounded-full px-3 text-xs font-medium text-ritmo-lilac-ink transition-colors hover:brightness-95"
+          className="ritmo-glass-pill flex min-h-8 max-w-[40%] shrink-0 items-center justify-center truncate whitespace-nowrap rounded-full px-3 text-xs font-medium text-ritmo-ink-soft transition-colors hover:brightness-95"
         >
           {latest ? latest.weight : "+ carga"}
         </button>
@@ -411,7 +413,7 @@ function SortableExerciseItem({ exercise, onOpenCarga, onUpdate, onDelete }) {
       <button
         type="button"
         aria-label="Arrastar para reordenar"
-        className="mt-2.5 flex h-11 w-7 shrink-0 touch-none items-center justify-center rounded-lg text-ritmo-text/25 transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink active:cursor-grabbing"
+        className="mt-2.5 flex h-11 w-7 shrink-0 touch-none items-center justify-center rounded-lg text-ritmo-text/25 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft active:cursor-grabbing"
         {...attributes}
         {...listeners}
       >
@@ -464,7 +466,7 @@ function WorkoutGroupCard({
       >
         <span className="text-sm font-semibold text-ritmo-text">{group}</span>
         <span className="flex shrink-0 items-center gap-2">
-          <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-lilac-ink">
+          <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-ink-soft">
             {exercises.length} exercício{exercises.length > 1 ? "s" : ""}
           </span>
           <ChevronDown
@@ -541,7 +543,7 @@ function CargaHistoryDropdown({ exercises }) {
                   );
                   return (
                     <div key={exercise.id}>
-                      <p className="mb-1 text-xs font-semibold text-ritmo-lilac-ink">
+                      <p className="mb-1 text-xs font-semibold text-ritmo-ink-soft">
                         {exercise.name}
                       </p>
                       <div className="space-y-1">
@@ -598,6 +600,7 @@ function GymTab({
 
   const sortedBodyFat = [...bodyFat].sort((a, b) => a.date.localeCompare(b.date));
   const bodyFatDesc = [...sortedBodyFat].reverse();
+  const insights = useMemo(() => buildGymInsights(workout, bodyFat), [workout, bodyFat]);
 
   // O arquivo pode vir como imagem carregada na hora ou como link salvo no banco.
   function isImageFile(url, name) {
@@ -664,6 +667,8 @@ function GymTab({
         </div>
       )}
 
+      <InsightsPanel items={insights} className="mb-4" />
+
       <div className="ritmo-card mb-4 rounded-2xl p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -672,7 +677,7 @@ function GymTab({
               {photoName ?? "Nenhum arquivo enviado ainda"}
             </p>
           </div>
-          <label className="ritmo-ghost flex min-h-9 cursor-pointer items-center gap-1 rounded-full px-3 text-xs font-medium text-ritmo-lilac-ink">
+          <label className="ritmo-ghost flex min-h-9 cursor-pointer items-center gap-1 rounded-full px-3 text-xs font-medium text-ritmo-ink-soft">
             <Upload size={14} />
             Enviar
             <input
@@ -685,7 +690,7 @@ function GymTab({
         </div>
 
         {importing && (
-          <p className="mt-3 flex items-center gap-2 text-xs text-ritmo-lilac-ink">
+          <p className="mt-3 flex items-center gap-2 text-xs text-ritmo-ink-soft">
             <Loader2 size={14} className="animate-spin" />
             Lendo o PDF e organizando por grupo...
           </p>
@@ -712,7 +717,7 @@ function GymTab({
                 href={photoDataUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="ritmo-inset flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-ritmo-lilac-ink"
+                className="ritmo-inset flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-ritmo-ink-soft"
               >
                 <FileText size={14} /> Abrir arquivo enviado
               </a>

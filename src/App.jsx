@@ -491,6 +491,8 @@ function App() {
             }}
             journal={{
               entries: journal.entries,
+              workout,
+              sessions: running.sessions,
               selectedDate: journalDate,
               onSelectDate: setJournalDate,
               onAdd: (dateISO) =>
@@ -507,6 +509,12 @@ function App() {
             habits={habits}
             workout={workout}
             bodyFat={bodyFat}
+            running={{
+              races: running.races,
+              plan: running.plan,
+              sessions: running.sessions,
+            }}
+            journal={journal.entries}
             calendar={calendar}
             onLogout={handleLogout}
             onNavigate={setTab}

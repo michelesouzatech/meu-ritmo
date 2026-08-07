@@ -16,7 +16,7 @@ function Sheet({ title, onClose, children }) {
             type="button"
             aria-label="Fechar"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
           >
             <X size={18} />
           </button>

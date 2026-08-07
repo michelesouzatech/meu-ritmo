@@ -35,7 +35,7 @@ function SubTabs({ active, onChange }) {
           onClick={() => onChange(id)}
           aria-pressed={active === id}
           className={`flex min-h-9 flex-1 items-center justify-center gap-1 rounded-full text-[11px] font-semibold transition-colors ${
-            active === id ? "ritmo-glass-pill text-ritmo-lilac-ink" : "text-ritmo-muted"
+            active === id ? "ritmo-glass-pill text-ritmo-pink-deep" : "text-ritmo-muted"
           }`}
         >
           <Icon size={14} />

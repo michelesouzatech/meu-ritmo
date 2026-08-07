@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, Trash2, RotateCcw, Flame, ChevronDown, Pencil, GripVertical } from "lucide-react";
 import {
   DndContext,
@@ -21,7 +21,10 @@ import Sheet from "../components/Sheet.jsx";
 import AddButton from "../components/AddButton.jsx";
 import HabitCalendar from "../components/HabitCalendar.jsx";
 import HabitWeekStrip from "../components/HabitWeekStrip.jsx";
-import { todayISO, daysBetween, toISODate, formatDatePtBr } from "../lib/date.js";
+import InsightsPanel from "../components/InsightsPanel.jsx";
+import { todayISO, formatDatePtBr } from "../lib/date.js";
+import { habitProgress } from "../lib/habitProgress.js";
+import { buildHabitInsights } from "../lib/insights.js";
 
 export function HabitFormSheet({ habit, onClose, onSave }) {
   const isEditing = !!habit;
@@ -112,54 +115,6 @@ export function HabitFormSheet({ habit, onClose, onSave }) {
   );
 }
 
-function calcStreak(habit) {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  let cursor = toISODate(d);
-  if (!habit.completions.includes(cursor)) {
-    d.setDate(d.getDate() - 1);
-    cursor = toISODate(d);
-  }
-  let streak = 0;
-  while (habit.completions.includes(cursor)) {
-    streak++;
-    d.setDate(d.getDate() - 1);
-    cursor = toISODate(d);
-  }
-  return streak;
-}
-
-export function habitProgress(habit) {
-  const today = todayISO();
-  const doneToday = habit.completions.includes(today);
-
-  if (!habit.periodDays) {
-    const d = new Date();
-    let markedLast7 = 0;
-    for (let i = 0; i < 7; i++) {
-      if (habit.completions.includes(toISODate(d))) markedLast7++;
-      d.setDate(d.getDate() - 1);
-    }
-    return {
-      isDaily: true,
-      isFinished: false,
-      doneToday,
-      ratio: markedLast7 / 7,
-      streak: calcStreak(habit),
-      totalDays: habit.completions.length,
-    };
-  }
-
-  const daysSinceStart = daysBetween(habit.startDate, today);
-  const notStarted = daysSinceStart < 0;
-  const elapsed = Math.max(0, daysSinceStart);
-  const isFinished = !notStarted && elapsed >= habit.periodDays;
-  const currentDay = notStarted ? 0 : Math.min(elapsed + 1, habit.periodDays);
-  const daysRemaining = notStarted ? habit.periodDays : Math.max(0, habit.periodDays - currentDay);
-  const ratio = habit.completions.length / habit.periodDays;
-  return { isDaily: false, currentDay, daysRemaining, isFinished, notStarted, doneToday, ratio };
-}
-
 function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
   const progress = habitProgress(habit);
   const { isFinished, notStarted } = progress;
@@ -171,7 +126,7 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
   return (
     <div className="ritmo-card rounded-2xl p-3.5">
       {!isEditingToday && (
-        <p className="mb-2 text-xs font-medium text-ritmo-lilac-ink">{formatDatePtBr(date)}</p>
+        <p className="mb-2 text-xs font-medium text-ritmo-ink-soft">{formatDatePtBr(date)}</p>
       )}
       <div className="flex items-start gap-3">
         <button
@@ -181,7 +136,7 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
           aria-label={doneOnDate ? "Desmarcar dia" : "Marcar dia"}
           className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border-2 transition-colors disabled:opacity-60 ${
             doneOnDate
-              ? "border-ritmo-pink bg-ritmo-pink text-white"
+              ? "border-ritmo-pink-deep bg-ritmo-pink-deep text-white"
               : "border-ritmo-line bg-white/60"
           }`}
         >
@@ -221,7 +176,7 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-lilac-ink">
+          <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-ink-soft">
             {progress.isDaily
               ? "diário"
               : notStarted
@@ -234,7 +189,7 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
             <button
               type="button"
               onClick={() => onEdit(habit)}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
               aria-label="Editar hábito"
             >
               <Pencil size={14} />
@@ -242,7 +197,7 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
             <button
               type="button"
               onClick={() => onDelete(habit.id)}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
               aria-label="Excluir hábito"
             >
               <Trash2 size={14} />
@@ -278,7 +233,7 @@ function SortableHabitItem({ habit, date, onToggleDate, onDelete, onRestart, onE
       <button
         type="button"
         aria-label="Arrastar para reordenar"
-        className="mt-2.5 flex h-11 w-7 shrink-0 touch-none items-center justify-center rounded-lg text-ritmo-text/25 transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink active:cursor-grabbing"
+        className="mt-2.5 flex h-11 w-7 shrink-0 touch-none items-center justify-center rounded-lg text-ritmo-text/25 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft active:cursor-grabbing"
         {...attributes}
         {...listeners}
       >
@@ -340,6 +295,7 @@ function DateDropdown({ selectedDate, onSelectDate, habits }) {
 
 function HabitsScreen({ habits, onToggleDate, onDelete, onRestart, onEdit, onReorder, onAdd }) {
   const [selectedDate, setSelectedDate] = useState(todayISO());
+  const insights = useMemo(() => buildHabitInsights(habits), [habits]);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
@@ -385,6 +341,7 @@ function HabitsScreen({ habits, onToggleDate, onDelete, onRestart, onEdit, onReo
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
           />
+          <InsightsPanel items={insights} className="mb-4" />
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={habits.map((h) => h.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-3">

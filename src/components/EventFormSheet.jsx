@@ -174,7 +174,7 @@ function EventFormSheet({ event, dateISO, startTime, onClose, onCreate, onUpdate
             className="peer sr-only"
           />
           <span
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-ritmo-pink transition-colors peer-checked:bg-ritmo-pink"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-ritmo-line transition-colors peer-checked:border-ritmo-pink-deep peer-checked:bg-ritmo-pink-deep"
             aria-hidden
           >
             <Clock

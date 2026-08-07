@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
-import { habitDayColor } from "../lib/habitColor.js";
+import { habitDayColor, HABIT_DAY_INK } from "../lib/habitColor.js";
 import { toISODate, todayISO } from "../lib/date.js";
 
 const WEEKDAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -39,7 +39,7 @@ function HabitWeekStrip({ habits, selectedDate, onSelectDate }) {
           type="button"
           onClick={() => goToWeek(-1)}
           aria-label="Semana anterior"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
         >
           <ChevronLeft size={16} />
         </button>
@@ -60,7 +60,7 @@ function HabitWeekStrip({ habits, selectedDate, onSelectDate }) {
           onClick={() => goToWeek(1)}
           disabled={isCurrentWeek}
           aria-label="Próxima semana"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-lilac hover:text-ritmo-lilac-ink disabled:pointer-events-none disabled:opacity-30"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-ritmo-muted transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft disabled:pointer-events-none disabled:opacity-30"
         >
           <ChevronRight size={16} />
         </button>
@@ -92,7 +92,7 @@ function HabitWeekStrip({ habits, selectedDate, onSelectDate }) {
                 className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-transform disabled:opacity-30 enabled:hover:scale-105"
                 style={{
                   backgroundColor: bg ?? "transparent",
-                  color: bg ? "#fff" : "var(--color-ritmo-text)",
+                  color: bg ? HABIT_DAY_INK : "var(--color-ritmo-text)",
                   border: isSelected
                     ? "2px solid var(--color-ritmo-pink-deep)"
                     : isToday
