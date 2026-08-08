@@ -17,18 +17,7 @@ function StatCard({ label, value }) {
   );
 }
 
-function ProfileScreen({
-  user,
-  tasks,
-  habits,
-  workout,
-  bodyFat,
-  running,
-  journal,
-  calendar,
-  onLogout,
-  onNavigate,
-}) {
+function ProfileScreen({ user, tasks, habits, regras, ai, onLogout, onNavigate }) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -128,15 +117,7 @@ function ProfileScreen({
         Sair da conta
       </button>
 
-      <InsightsScreen
-        tasks={tasks}
-        habits={habits}
-        workout={workout}
-        bodyFat={bodyFat}
-        running={running}
-        journal={journal}
-        calendar={calendar}
-      />
+      <InsightsScreen regras={regras} ai={ai} onNavigate={onNavigate} />
     </div>
   );
 }

@@ -293,7 +293,17 @@ function DateDropdown({ selectedDate, onSelectDate, habits }) {
   );
 }
 
-function HabitsScreen({ habits, onToggleDate, onDelete, onRestart, onEdit, onReorder, onAdd }) {
+function HabitsScreen({
+  habits,
+  ai = [],
+  aiStatus,
+  onToggleDate,
+  onDelete,
+  onRestart,
+  onEdit,
+  onReorder,
+  onAdd,
+}) {
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const insights = useMemo(() => buildHabitInsights(habits), [habits]);
   const sensors = useSensors(
@@ -341,7 +351,7 @@ function HabitsScreen({ habits, onToggleDate, onDelete, onRestart, onEdit, onReo
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
           />
-          <InsightsPanel items={insights} className="mb-4" />
+          <InsightsPanel items={insights} ai={ai} aiStatus={aiStatus} className="mb-4" />
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={habits.map((h) => h.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-3">

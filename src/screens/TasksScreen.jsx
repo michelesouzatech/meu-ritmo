@@ -140,7 +140,7 @@ function TaskItem({ task, onToggle, onDelete }) {
   );
 }
 
-function TasksScreen({ tasks, onToggle, onDelete, onAdd }) {
+function TasksScreen({ tasks, ai = [], aiStatus, onToggle, onDelete, onAdd }) {
   const pending = tasks
     .filter((t) => !t.done)
     .sort((a, b) => {
@@ -175,7 +175,7 @@ function TasksScreen({ tasks, onToggle, onDelete, onAdd }) {
         </p>
       )}
 
-      <InsightsPanel items={insights} className="mb-4" />
+      <InsightsPanel items={insights} ai={ai} aiStatus={aiStatus} className="mb-4" />
 
       {pending.length > 0 && (
         <div className="mb-6 space-y-3">

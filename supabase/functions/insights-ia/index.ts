@@ -1,0 +1,305 @@
+// Gera os insights escritos do app a partir do resumo agregado que o front
+// manda (ver src/lib/aiSummary.js).
+//
+// A chave do Gemini mora aqui, no ambiente da função, e nunca no bundle do
+// front-end: qualquer VITE_* vira texto visível no site publicado. Por isso a
+// chamada ao Gemini passa por esta função em vez de sair direto do navegador.
+//
+// A função é chamada por uma pessoa logada. O `verify_jwt` do Supabase confere
+// a assinatura de quem chamou, mas aceita também a chave publicável do site —
+// que está no bundle e qualquer um lê. Sem a checagem de `chamadaAnonima`
+// abaixo, dava pra queimar a cota do Gemini de fora do app.
+//
+// É uma chamada só pro app inteiro, não uma por aba. As cinco áreas se cruzam
+// (o dia de treino explica o hábito que caiu, a agenda explica a tarefa
+// encalhada), então dividir em cinco requisições gastaria cinco vezes a cota
+// pra entregar uma leitura pior — cada pedaço cego sobre o resto.
+
+// Versão fixa de propósito: os apelidos "-latest" trocam de modelo sozinhos, e
+// o prompt daqui foi escrito em cima do comportamento deste. Se ele sair do ar
+// um dia, o erro vem como 404 no log da função.
+const GEMINI_MODEL = 'gemini-3.5-flash'
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
+// As áreas que têm painel próprio numa aba do app. Precisa bater com o mapa
+// AREA_KEY em src/lib/aiInsights.js.
+const AREAS = ['habitos', 'forca', 'corrida', 'diario', 'tarefas']
+
+// Pra onde uma ação sugerida pode levar. É AREAS mais a agenda, que aparece na
+// Home e não tem painel de insight próprio.
+const DESTINOS = [...AREAS, 'agenda']
+
+// Os mesmos três tons que o painel já sabe desenhar (up = seta pra cima,
+// down = seta pra baixo, tip = lâmpada). Inventar um quarto aqui deixaria a
+// linha sem ícone na tela.
+const TONS = ['up', 'down', 'tip']
+
+// Forçar JSON com schema evita o passo frágil de tentar extrair texto de uma
+// resposta em prosa livre — o modelo devolve exatamente esses campos ou a
+// requisição falha, e a tela nunca recebe algo meio montado.
+const responseSchema = {
+  type: 'OBJECT',
+  properties: {
+    perfil: {
+      type: 'OBJECT',
+      properties: {
+        titulo: { type: 'STRING' },
+        paragrafos: { type: 'ARRAY', items: { type: 'STRING' } },
+        acoes: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              emoji: { type: 'STRING' },
+              texto: { type: 'STRING' },
+              impacto: { type: 'STRING' },
+              // Enum fechado em vez de texto livre: é o que deixa o botão
+              // levar pra algum lugar de verdade. Um destino inventado viraria
+              // clique morto, e adivinhar a aba pela frase erraria cedo ou
+              // tarde.
+              destino: { type: 'STRING', enum: DESTINOS },
+            },
+            required: ['emoji', 'texto', 'impacto', 'destino'],
+          },
+        },
+      },
+      required: ['titulo', 'paragrafos', 'acoes'],
+    },
+    areas: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          area: { type: 'STRING', enum: AREAS },
+          tom: { type: 'STRING', enum: TONS },
+          texto: { type: 'STRING' },
+        },
+        required: ['area', 'tom', 'texto'],
+      },
+    },
+  },
+  required: ['perfil', 'areas'],
+}
+
+// A assinatura do token já foi conferida pelo gateway antes de chegar aqui, e
+// o segredo pra refazer essa conta não mora nesta função. Então o que falta é
+// só olhar QUEM chamou, lendo o corpo do JWT.
+//
+// A regra é deliberadamente frouxa: recusa só os dois credenciais públicos
+// conhecidos — a chave publicável nova, que nem é um JWT, e a chave anônima
+// antiga, que vem com `role: "anon"`. Qualquer outra coisa que o gateway tenha
+// aceitado passa. Errar pro lado de recusar deixaria a leitura fora do ar pra
+// ela; errar pro lado de aceitar custa, no pior caso, uma geração de cota.
+function chamadaAnonima(req: Request) {
+  const token = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '')
+  if (!token) return true
+
+  const corpo = token.split('.')[1]
+  if (!corpo) return true // sb_publishable_… não tem as três partes de um JWT
+
+  try {
+    const base64 = corpo.replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')))
+    return payload.role === 'anon'
+  } catch {
+    return true
+  }
+}
+
+function buildPrompt(summary: unknown) {
+  const s = summary as { hoje?: string; diaDaSemana?: string; janelaDeDias?: number }
+
+  return `Você é o assistente do Meu Ritmo, um app de rotina pessoal. Escreve em
+português do Brasil, na segunda pessoa, falando com a própria dona desses
+registros. Ela é mulher — use concordância no feminino quando precisar.
+
+Hoje é ${s.hoje ?? '?'} (${s.diaDaSemana ?? '?'}). O resumo abaixo cobre os
+últimos ${s.janelaDeDias ?? 60} dias de cinco áreas: hábitos, força (academia),
+corrida, diário de treino e tarefas — mais a agenda, quando conectada.
+
+${JSON.stringify(summary, null, 2)}
+
+COMO LER O RESUMO
+- "marcacoesPorSemana" começa na semana atual, que ainda está em andamento.
+  Nunca leia o número da primeira posição como queda sem dizer que a semana não
+  fechou.
+- "disposicao" vai de 1 (acabada) a 5 (ótima).
+- "cargas" está em ordem cronológica: a última posição é o registro mais
+  recente. O peso é texto livre, do jeito que ela digitou.
+- "regras" é o que o próprio app já calculou e JÁ ESTÁ ESCRITO NA TELA, num
+  painel logo abaixo do seu texto.
+
+SOBRE OS NÚMEROS
+- Use apenas números que estão no resumo, ou contas simples feitas a partir
+  deles (diferenças, somas, médias, percentuais). Nunca invente um valor.
+- Se um dado necessário não está no resumo, não fale sobre ele. É melhor
+  escrever menos do que preencher buraco com suposição.
+- Um registro só não é tendência. Com dois, diga "de X pra Y"; com um, diga que
+  falta o segundo.
+
+O QUE ESCREVER
+- Não repita "regras" com outras palavras. Aquilo a pessoa já está lendo. Se a
+  única coisa que você tem a dizer sobre uma área é o que a regra já disse,
+  não escreva nada sobre essa área — a lista "areas" pode vir sem ela.
+- Seu trabalho é o que nenhuma regra fez: cruzar áreas que o app mostra
+  separadas. O dia da semana em que a corrida acontece e o dia em que os
+  hábitos caem. A carga que parou de subir e o diário marcando "cansada". A
+  agenda cheia e a tarefa que está encalhada há duas semanas.
+- Prefira a trajetória ao retrato: "era 3 vezes por semana, virou 1" vale mais
+  que "1 vez por semana".
+- Quando apontar uma queda, procure no resumo de onde ela veio. Uma queda com
+  explicação é útil; uma queda solta é só cobrança.
+
+SOBRE O TOM
+- Direta e concreta, como uma amiga que acompanha a rotina dela de perto. Sem
+  julgamento moral, sem "você deveria", sem paternalismo, sem alarmismo.
+- Ela registra a vida dela nesse app há pouco tempo. Elogie o que está de pé
+  antes de apontar o que caiu.
+- Nada de emoji dentro de título, parágrafo ou texto de área.
+
+FORMATO
+- "perfil.titulo": uma frase de no máximo 90 caracteres com a leitura
+  principal do momento dela.
+- "perfil.paragrafos": 2 a 3 parágrafos, cada um com no máximo 45 palavras.
+  É aqui que moram os cruzamentos entre áreas.
+- "perfil.acoes": 2 a 3 sugestões concretas. Cada uma tem:
+  - "emoji": um único emoji que represente literalmente o assunto — corrida →
+    🏃‍♀️, academia → 🏋️‍♀️, água → 💧, sono → 😴, descanso → 🛌, leitura → 📖,
+    diário → 📓, tarefa → ✅, agenda → 📅, alongamento → 🧘‍♀️. NUNCA use emoji
+    genérico de marcador como 📌, 📊, 🔍 ou 🏷️: se ele serviria pra qualquer
+    ação, está errado.
+  - "texto": a ação no infinitivo, até 60 caracteres.
+  - "impacto": até 45 caracteres, o efeito esperado. Use número concreto
+    sempre que o resumo sustentar um ("+2 dias/semana", "fecha a semana do
+    plano"). Só descreva em palavras quando não houver base numérica.
+  - "destino": onde ela resolve isso, exatamente um destes — "habitos",
+    "forca" (exercícios e carga da academia), "corrida" (provas, plano e
+    corridas), "diario" (como o treino foi), "tarefas", "agenda".
+- "areas": no máximo 2 itens por área, e é para vir vazia quando não houver o
+  que acrescentar. Cada item tem:
+  - "area": uma de "habitos", "forca", "corrida", "diario", "tarefas".
+  - "tom": "up" pro que está evoluindo, "down" pro que precisa de atenção,
+    "tip" pra sugestão.
+  - "texto": 1 ou 2 frases, no máximo 40 palavras. Escreva como quem fala com
+    ela, não como legenda de gráfico.`
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+
+  if (chamadaAnonima(req)) {
+    return json({ error: 'auth', message: 'Precisa estar logada pra gerar a leitura.' }, 401)
+  }
+
+  const apiKey = Deno.env.get('GEMINI_API_KEY')
+  if (!apiKey) {
+    console.error('GEMINI_API_KEY não configurada')
+    return json({ error: 'config', message: 'A chave do Gemini não está configurada.' }, 500)
+  }
+
+  let summary: unknown
+  try {
+    summary = (await req.json())?.summary
+  } catch {
+    summary = null
+  }
+
+  if (!summary || typeof summary !== 'object') {
+    return json({ error: 'payload', message: 'Resumo ausente ou inválido.' }, 400)
+  }
+
+  let response: Response
+  try {
+    response = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: buildPrompt(summary) }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema,
+          temperature: 0.4,
+          // Mais folga de "pensamento" que a função equivalente do FinPilot:
+          // lá as contas chegavam prontas e o trabalho era redação, aqui o
+          // modelo precisa cruzar cinco áreas e descartar o que as regras já
+          // disseram. Se a geração ficar lenta demais pra tela, é o primeiro
+          // número a baixar.
+          thinkingConfig: { thinkingBudget: 512 },
+        },
+      }),
+    })
+  } catch (err) {
+    console.error('falha de rede ao chamar o Gemini', err)
+    return json({ error: 'network', message: 'Não consegui falar com o Gemini agora.' }, 502)
+  }
+
+  if (!response.ok) {
+    const detail = await response.text()
+    console.error('Gemini respondeu', response.status, detail)
+
+    // 429 é o caso esperado no plano gratuito: a cota do dia acabou. Vale uma
+    // mensagem própria porque a saída é só esperar, não mexer em nada.
+    if (response.status === 429) {
+      return json(
+        { error: 'quota', message: 'A cota gratuita do Gemini de hoje acabou. Tente amanhã.' },
+        429,
+      )
+    }
+
+    return json({ error: 'gemini', message: 'O Gemini não conseguiu responder agora.' }, 502)
+  }
+
+  const data = await response.json()
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+
+  if (!text) {
+    // Acontece quando o filtro de segurança do Gemini bloqueia a resposta: vem
+    // 200 com candidato vazio, não um erro HTTP.
+    console.error('resposta do Gemini sem texto', JSON.stringify(data).slice(0, 800))
+    return json({ error: 'empty', message: 'O Gemini devolveu uma resposta vazia.' }, 502)
+  }
+
+  try {
+    const parsed = JSON.parse(text)
+
+    // O enum do schema já restringe destino, área e tom, mas a tela navega com
+    // o destino e escolhe ícone pelo tom — conferir aqui custa três linhas e
+    // garante que nada fora da lista chegue no front.
+    const acoes = (parsed.perfil?.acoes ?? [])
+      .filter((acao: { destino?: string }) => DESTINOS.includes(acao.destino ?? ''))
+      .slice(0, 3)
+
+    const areas = (parsed.areas ?? []).filter(
+      (item: { area?: string; tom?: string; texto?: string }) =>
+        AREAS.includes(item.area ?? '') && TONS.includes(item.tom ?? '') && !!item.texto,
+    )
+
+    return json({
+      perfil: {
+        titulo: parsed.perfil?.titulo ?? '',
+        paragrafos: parsed.perfil?.paragrafos ?? [],
+        acoes,
+      },
+      areas,
+      modelo: GEMINI_MODEL,
+      geradoEm: new Date().toISOString(),
+    })
+  } catch (err) {
+    console.error('JSON inválido vindo do Gemini', err, text.slice(0, 500))
+    return json({ error: 'parse', message: 'A resposta do Gemini veio fora do formato.' }, 502)
+  }
+})

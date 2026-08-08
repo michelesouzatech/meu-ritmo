@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import BottomNav from "./components/BottomNav.jsx";
 import HomeScreen from "./screens/HomeScreen.jsx";
 import TasksScreen, { TaskFormSheet } from "./screens/TasksScreen.jsx";
@@ -29,6 +29,7 @@ import { clearGoogleToken, connectGoogleCalendar } from "./lib/googleCalendar.js
 import { useGoogleCalendar } from "./hooks/useGoogleCalendar.js";
 import { useRunning } from "./hooks/useRunning.js";
 import { useJournal } from "./hooks/useJournal.js";
+import { useAiInsights } from "./hooks/useAiInsights.js";
 import * as db from "./lib/db.js";
 
 const emptyWorkout = { createdAt: null, photoName: null, photoDataUrl: null, exercises: [] };
@@ -49,6 +50,7 @@ function App() {
   const [session, setSession] = useState(undefined);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [tab, setTab] = useState("home");
+  const [workoutTab, setWorkoutTab] = useState(null);
   const [sheet, setSheet] = useState(null);
 
   const [loading, setLoading] = useState(true);
@@ -150,6 +152,46 @@ function App() {
 
   const running = useRunning({ userId, save, initial: runningData });
   const journal = useJournal({ userId, save, initial: journalData });
+
+  // Os insights são calculados uma vez aqui em cima e distribuídos pras abas,
+  // não recalculados em cada tela. As áreas se cruzam — o dia de treino
+  // explica o hábito que caiu, a agenda cheia explica a tarefa encalhada — e
+  // só o App enxerga todas ao mesmo tempo. É também o que permite pedir uma
+  // única leitura por dia ao Gemini em vez de uma por aba.
+  const insightData = useMemo(
+    () => ({
+      tasks,
+      habits,
+      workout,
+      bodyFat,
+      running: { races: running.races, plan: running.plan, sessions: running.sessions },
+      journal: journal.entries,
+      events: calendar.events,
+      calendarConnected: calendar.status === "ready",
+    }),
+    [
+      tasks,
+      habits,
+      workout,
+      bodyFat,
+      running.races,
+      running.plan,
+      running.sessions,
+      journal.entries,
+      calendar.events,
+      calendar.status,
+    ],
+  );
+
+  const ai = useAiInsights({ userId, ready: !loading, data: insightData });
+
+  // A navegação carrega a sub-aba junto porque as ações sugeridas no Perfil
+  // apontam pra dentro da aba Treino. Pelo menu de baixo ela vem nula, e a
+  // tela volta a abrir na sub-aba que a pessoa tinha deixado.
+  const navigate = useCallback((nextTab, sub = null) => {
+    setTab(nextTab);
+    setWorkoutTab(sub);
+  }, []);
 
   function addTask(data) {
     const task = { id: crypto.randomUUID(), done: false, ...data };
@@ -434,12 +476,14 @@ function App() {
             onNewEvent={(dateISO, startTime) =>
               setSheet({ type: "event", event: null, dateISO, startTime })
             }
-            onNavigate={setTab}
+            onNavigate={navigate}
           />
         )}
         {tab === "tasks" && (
           <TasksScreen
             tasks={tasks}
+            ai={ai.areas.tasks}
+            aiStatus={ai.status}
             onToggle={toggleTask}
             onDelete={deleteTask}
             onAdd={() => setSheet("task")}
@@ -448,6 +492,8 @@ function App() {
         {tab === "habits" && (
           <HabitsScreen
             habits={habits}
+            ai={ai.areas.habits}
+            aiStatus={ai.status}
             onToggleDate={toggleHabitDate}
             onDelete={deleteHabit}
             onRestart={restartHabit}
@@ -458,9 +504,12 @@ function App() {
         )}
         {tab === "workout" && (
           <WorkoutScreen
+            initialTab={workoutTab}
             gym={{
               workout,
               bodyFat,
+              ai: ai.areas.gym,
+              aiStatus: ai.status,
               onAddExercise: () => setSheet("exercise"),
               onUpdateExercise: updateExercise,
               onDeleteExercise: deleteExercise,
@@ -477,6 +526,8 @@ function App() {
               plan: running.plan,
               sessions: running.sessions,
               calendarReady: calendar.status === "ready",
+              ai: ai.areas.running,
+              aiStatus: ai.status,
               onAddRace: () => setSheet({ type: "race", race: null }),
               onEditRace: (race) => setSheet({ type: "race", race }),
               onDeleteRace: running.deleteRace,
@@ -493,6 +544,8 @@ function App() {
               entries: journal.entries,
               workout,
               sessions: running.sessions,
+              ai: ai.areas.journal,
+              aiStatus: ai.status,
               selectedDate: journalDate,
               onSelectDate: setJournalDate,
               onAdd: (dateISO) =>
@@ -507,22 +560,15 @@ function App() {
             user={session.user}
             tasks={tasks}
             habits={habits}
-            workout={workout}
-            bodyFat={bodyFat}
-            running={{
-              races: running.races,
-              plan: running.plan,
-              sessions: running.sessions,
-            }}
-            journal={journal.entries}
-            calendar={calendar}
+            regras={ai.regras}
+            ai={ai}
             onLogout={handleLogout}
-            onNavigate={setTab}
+            onNavigate={navigate}
           />
         )}
       </div>
 
-      <BottomNav active={tab} onNavigate={setTab} />
+      <BottomNav active={tab} onNavigate={navigate} />
 
       {sheet === "task" && (
         <TaskFormSheet onClose={() => setSheet(null)} onSave={addTask} />

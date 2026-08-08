@@ -46,8 +46,12 @@ function SubTabs({ active, onChange }) {
   );
 }
 
-function WorkoutScreen({ gym, running, journal }) {
-  const [tab, setTab] = useState(readSavedTab);
+// `initialTab` chega quando a pessoa toca numa ação sugerida no Perfil: sem
+// ela, um clique em "corrida" abriria a aba Treino na sub-aba que estava
+// salva — quase sempre Força — e pareceria botão quebrado. A tela é montada
+// do zero a cada troca de aba principal, então o valor inicial basta.
+function WorkoutScreen({ gym, running, journal, initialTab }) {
+  const [tab, setTab] = useState(() => initialTab ?? readSavedTab());
 
   function changeTab(next) {
     setTab(next);

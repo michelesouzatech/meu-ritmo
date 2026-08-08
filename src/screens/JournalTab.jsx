@@ -54,6 +54,8 @@ function JournalTab({
   entries,
   workout,
   sessions,
+  ai = [],
+  aiStatus,
   selectedDate,
   onSelectDate,
   onAdd,
@@ -99,7 +101,7 @@ function JournalTab({
         />
       </section>
 
-      <InsightsPanel items={insights} className="mb-4" />
+      <InsightsPanel items={insights} ai={ai} aiStatus={aiStatus} className="mb-4" />
 
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <h2 className="text-base font-semibold text-ritmo-text">
