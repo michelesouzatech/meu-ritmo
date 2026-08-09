@@ -474,23 +474,50 @@ export function buildRunningInsights(
     }
   }
 
+  /* O melhor treino contra a meta de pace.
+     A meta pode vir do plano ou da prova — `goalPace` acima já procura nas
+     duas. Mas isto aqui exigia `next`, uma prova futura cadastrada, e a
+     consequência era severa: quem treina só com plano ficava sem NENHUMA
+     leitura de pace, mesmo tendo meta definida e o número na mão. Prova é uma
+     data no calendário, não a origem da meta.
+     Cada linha da lista já mostra o gap da própria corrida. O que a tela não
+     junta — e é o que justifica esta regra — é qual foi o melhor de todos. Daí
+     o mínimo de duas: com uma só, "seu melhor treino" é só outro jeito de
+     dizer "sua única corrida", e o gap dela já está na tela. */
   const best = bestTrainingPace(sessions);
-  if (best != null && goalPace != null && next) {
-    const dias = daysBetween(today, next.date);
-    if (best > goalPace && dias <= 60) {
-      items.push(
-        w.down(
-          "pace-longe",
-          `${next.name} ${untilText(dias)} e seu melhor treino está ${Math.round(best - goalPace)}s/km acima da meta de ${formatPaceLabel(goalPace)}.`,
-          `${next.name} ${untilText(dias)} e seu melhor treino ainda está ${Math.round(best - goalPace)}s/km acima da meta`,
-        ),
-      );
-    } else if (best <= goalPace) {
+  if (best != null && goalPace != null && withPace.length >= 2) {
+    const atraso = Math.round(best - goalPace);
+    const dias = next ? daysBetween(today, next.date) : null;
+
+    if (best <= goalPace) {
       items.push(
         w.up(
           "pace-na-meta",
-          `Seu melhor treino já está no pace da meta: ${formatPaceLabel(best)} contra ${formatPaceLabel(goalPace)} de ${next.name}.`,
-          `seu melhor treino já bate o pace da meta de ${next.name}`,
+          next
+            ? `Seu melhor treino já está no pace da meta: ${formatPaceLabel(best)} contra ${formatPaceLabel(goalPace)} de ${next.name}.`
+            : `Seu melhor treino já está no pace da meta do plano: ${formatPaceLabel(best)} contra ${formatPaceLabel(goalPace)}.`,
+          next
+            ? `seu melhor treino já bate o pace da meta de ${next.name}`
+            : `seu melhor treino já bate o pace da meta do plano, com ${formatPaceLabel(best)}`,
+        ),
+      );
+    } else if (next && dias <= 60) {
+      // Com prova à vista o assunto é o prazo, então a frase abre pela prova.
+      items.push(
+        w.down(
+          "pace-longe",
+          `${next.name} ${untilText(dias)} e seu melhor treino está ${atraso}s/km acima da meta de ${formatPaceLabel(goalPace)}.`,
+          `${next.name} ${untilText(dias)} e seu melhor treino ainda está ${atraso}s/km acima da meta`,
+        ),
+      );
+    } else {
+      // Sem prova (ou com ela ainda longe) não existe prazo pra cobrar: fica a
+      // distância até a meta, sem urgência inventada.
+      items.push(
+        w.down(
+          "pace-longe-da-meta",
+          `Seu melhor treino até agora foi ${formatPaceLabel(best)}, ${atraso}s/km acima da meta de ${formatPaceLabel(goalPace)}.`,
+          `seu melhor treino ainda está ${atraso}s/km acima da meta de pace`,
         ),
       );
     }
@@ -530,11 +557,23 @@ export function buildRunningInsights(
     const restam = week.target - week.done;
     const diasNaSemana = daysBetween(today, week.end);
     if (restam > 0 && diasNaSemana <= 2) {
+      // No último dia da semana, `diasNaSemana` é 0 — e a frase dizia "restam 0
+      // dias", que é o tipo de texto que faz a pessoa desconfiar do app todo.
+      const prazo =
+        diasNaSemana === 0
+          ? "e ela fecha hoje"
+          : diasNaSemana === 1
+            ? "e resta 1 dia"
+            : `e restam ${diasNaSemana} dias`;
+      const prazoClause =
+        diasNaSemana === 0
+          ? "e ela fecha hoje"
+          : `com ${diasNaSemana === 1 ? "1 dia" : `${diasNaSemana} dias`} pela frente`;
       items.push(
         w.tip(
           "semana-apertada",
-          `${restam === 1 ? "Falta 1 corrida" : `Faltam ${restam} corridas`} pra fechar a semana e ${diasNaSemana === 1 ? "resta 1 dia" : `restam ${diasNaSemana} dias`}.`,
-          `${restam === 1 ? "falta 1 corrida" : `faltam ${restam} corridas`} pra fechar a semana, com ${diasNaSemana === 1 ? "1 dia" : `${diasNaSemana} dias`} pela frente`,
+          `${restam === 1 ? "Falta 1 corrida" : `Faltam ${restam} corridas`} pra fechar a semana ${prazo}.`,
+          `${restam === 1 ? "falta 1 corrida" : `faltam ${restam} corridas`} pra fechar a semana, ${prazoClause}`,
         ),
       );
     }
