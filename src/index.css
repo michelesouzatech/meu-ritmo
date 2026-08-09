@@ -209,19 +209,17 @@ body {
 
 /* O Safari no iOS dá zoom ao focar campos com fonte menor que 16px — e não
    desfaz o zoom depois. Em telas de toque, força 16px nos campos.
-   Fora de @layer de propósito: precisa vencer as utilities do Tailwind. */
+   Fora de @layer de propósito: precisa vencer as utilities do Tailwind.
+
+   `ritmo-inline-field` fica de fora: são campos que não parecem campo, e sim
+   o próprio texto do cartão editável no lugar (o nome do exercício no
+   treino). Neles o 16px quebrava a hierarquia — o nome do exercício saía
+   maior que o título do treino logo acima. Ali vale o tamanho do texto, e o
+   zoom ao tocar é o preço. */
 @media (pointer: coarse) {
-  input,
+  input:not(.ritmo-inline-field),
   textarea,
   select {
-    font-size: 16px;
-  }
-
-  /* Esse 16px vale só pros campos, então texto que divide o cartão com um
-     deles encolhe do lado dele — no cartão de treino o nome do exercício
-     (um input) ficava maior que o título do treino, que é um span. Quem
-     precisa acompanhar o campo leva essa classe. */
-  .ritmo-match-field {
     font-size: 16px;
   }
 }

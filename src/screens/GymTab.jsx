@@ -368,7 +368,7 @@ function ExerciseItem({ exercise, onOpenCarga, onUpdate, onDelete }) {
         <input
           value={exercise.name}
           onChange={(e) => onUpdate({ name: e.target.value })}
-          className="min-w-0 flex-1 bg-transparent text-sm font-medium text-ritmo-text underline decoration-ritmo-line decoration-2 underline-offset-2 outline-none focus:decoration-ritmo-pink"
+          className="ritmo-inline-field min-w-0 flex-1 bg-transparent text-sm font-medium text-ritmo-text underline decoration-ritmo-line decoration-2 underline-offset-2 outline-none focus:decoration-ritmo-pink"
         />
         <button
           type="button"
@@ -384,7 +384,7 @@ function ExerciseItem({ exercise, onOpenCarga, onUpdate, onDelete }) {
           value={exercise.setsReps}
           onChange={(e) => onUpdate({ setsReps: e.target.value })}
           placeholder="Séries x reps"
-          className="ritmo-field min-h-8 min-w-0 flex-1 rounded-lg px-2 text-xs"
+          className="ritmo-inline-field ritmo-field min-h-8 min-w-0 flex-1 rounded-lg px-2 text-xs"
         />
         <button
           type="button"
@@ -464,9 +464,7 @@ function WorkoutGroupCard({
         aria-expanded={open}
         className="flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl p-4 text-left"
       >
-        <span className="ritmo-match-field text-sm font-semibold text-ritmo-text">
-          {group}
-        </span>
+        <span className="text-sm font-semibold text-ritmo-text">{group}</span>
         <span className="flex shrink-0 items-center gap-2">
           <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-ink-soft">
             {exercises.length} exercício{exercises.length > 1 ? "s" : ""}
