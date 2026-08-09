@@ -216,4 +216,12 @@ body {
   select {
     font-size: 16px;
   }
+
+  /* Esse 16px vale só pros campos, então texto que divide o cartão com um
+     deles encolhe do lado dele — no cartão de treino o nome do exercício
+     (um input) ficava maior que o título do treino, que é um span. Quem
+     precisa acompanhar o campo leva essa classe. */
+  .ritmo-match-field {
+    font-size: 16px;
+  }
 }

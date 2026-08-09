@@ -464,7 +464,9 @@ function WorkoutGroupCard({
         aria-expanded={open}
         className="flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl p-4 text-left"
       >
-        <span className="text-sm font-semibold text-ritmo-text">{group}</span>
+        <span className="ritmo-match-field text-sm font-semibold text-ritmo-text">
+          {group}
+        </span>
         <span className="flex shrink-0 items-center gap-2">
           <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-ink-soft">
             {exercises.length} exercício{exercises.length > 1 ? "s" : ""}
