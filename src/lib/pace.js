@@ -36,6 +36,20 @@ export function formatDuration(totalSeconds) {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
 }
 
+// Pace e tempo se escrevem com ":", e o teclado do campo abre inteiro justamente
+// pra essa tecla estar lá. Aqui só cai fora o que não é número nem ":" — letra
+// não tem o que fazer num campo de tempo.
+//
+// De propósito não remonta o que a pessoa escreveu. Uma versão anterior cortava
+// o texto em minutos e segundos de dois dígitos, e um campo já preenchido ficava
+// congelado: com "10:00" dentro, cada tecla nova era aparada e o campo devolvia
+// "10:00" de novo. Quem diz se o formato está certo é parsePace/parseDuration na
+// hora de salvar, com recado na tela — o campo não atrapalha quem está no meio
+// da digitação.
+export function maskTimeInput(raw) {
+  return String(raw ?? "").replace(/[^\d:]/g, "");
+}
+
 // Pace é sempre mm:ss por km — nunca passa de uma hora por quilômetro.
 export function parsePace(raw) {
   const seconds = parseDuration(raw);

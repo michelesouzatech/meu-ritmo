@@ -6,6 +6,7 @@ import {
   formatDuration,
   formatPace,
   formatPaceLabel,
+  maskTimeInput,
   paceFrom,
   parseDistance,
   parseDuration,
@@ -33,6 +34,21 @@ function Field({ label, hint, children }) {
       {children}
       {hint && <p className="mt-1 text-xs text-ritmo-muted">{hint}</p>}
     </div>
+  );
+}
+
+// Pace e tempo se escrevem com ":" — e o teclado numérico do celular não tem essa
+// tecla, o que prendia a pessoa em número inteiro. Por isso aqui não vai
+// inputMode: o teclado abre inteiro e o ":" fica ao alcance do dedo.
+function TimeInput({ value, onChange, placeholder, maxLength }) {
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(maskTimeInput(e.target.value))}
+      placeholder={placeholder}
+      maxLength={maxLength}
+      className={fieldClass}
+    />
   );
 }
 
@@ -104,7 +120,7 @@ export function RaceFormSheet({ race, onClose, onSave, onDelete }) {
     if (!date) return setError("Escolha a data da prova.");
     if (!distanceKm) return setError("Informe a distância em km (ex: 5 ou 7,5).");
     if (goalPace.trim() && parsePace(goalPace) === null) {
-      return setError("Pace meta em minutos por km, no formato 6:00.");
+      return setError("Pace meta em minutos por km, no formato 6:40.");
     }
     if (resultTime.trim() && resultSeconds === null) {
       return setError("Tempo oficial no formato 30:00 (ou 1:45:20 pra provas longas).");
@@ -180,13 +196,15 @@ export function RaceFormSheet({ race, onClose, onSave, onDelete }) {
           />
         </Field>
 
-        <Field label="Pace meta" hint="Minutos por km. Deixe em branco se ainda não definiu.">
-          <input
-            inputMode="numeric"
+        <Field
+          label="Pace meta"
+          hint="Minutos e segundos por km. Deixe em branco se ainda não definiu."
+        >
+          <TimeInput
             value={goalPace}
-            onChange={(e) => setGoalPace(e.target.value)}
-            placeholder="Ex: 6:00"
-            className={fieldClass}
+            onChange={setGoalPace}
+            placeholder="Ex: 6:40"
+            maxLength={5}
           />
         </Field>
 
@@ -205,12 +223,11 @@ export function RaceFormSheet({ race, onClose, onSave, onDelete }) {
                   : "Ex: 30:00 nos 5k. O app calcula seu pace."
               }
             >
-              <input
-                inputMode="numeric"
+              <TimeInput
                 value={resultTime}
-                onChange={(e) => setResultTime(e.target.value)}
+                onChange={setResultTime}
                 placeholder="Ex: 30:00"
-                className={fieldClass}
+                maxLength={8}
               />
             </Field>
 
@@ -315,7 +332,7 @@ export function RunPlanFormSheet({ plan, races, onClose, onSave }) {
     e.preventDefault();
     if (!name.trim()) return setError("Dê um nome pro plano.");
     if (goalPace.trim() && parsePace(goalPace) === null) {
-      return setError("Pace meta no formato 6:00.");
+      return setError("Pace meta no formato 6:40.");
     }
 
     setError(null);
@@ -396,12 +413,11 @@ export function RunPlanFormSheet({ plan, races, onClose, onSave }) {
               : "Opcional. Serve pra comparar com o pace das suas corridas."
           }
         >
-          <input
-            inputMode="numeric"
+          <TimeInput
             value={goalPace}
-            onChange={(e) => setGoalPace(e.target.value)}
-            placeholder="Ex: 6:00"
-            className={fieldClass}
+            onChange={setGoalPace}
+            placeholder="Ex: 6:40"
+            maxLength={5}
           />
         </Field>
 
@@ -487,12 +503,11 @@ export function RunSessionFormSheet({ session, dateISO, plan, onClose, onSave, o
             />
           </Field>
           <Field label="Tempo">
-            <input
-              inputMode="numeric"
+            <TimeInput
               value={duration}
-              onChange={(e) => setDuration(e.target.value)}
+              onChange={setDuration}
               placeholder="Ex: 31:12"
-              className={fieldClass}
+              maxLength={8}
             />
           </Field>
         </div>
