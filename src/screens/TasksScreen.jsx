@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Check } from "lucide-react";
+import { AlertTriangle, Check, Pencil } from "lucide-react";
 import Sheet from "../components/Sheet.jsx";
 import AddButton from "../components/AddButton.jsx";
 import SwipeToDelete from "../components/SwipeToDelete.jsx";
@@ -7,11 +7,12 @@ import InsightsPanel from "../components/InsightsPanel.jsx";
 import { todayISO, formatDatePtBr } from "../lib/date.js";
 import { buildTaskInsights } from "../lib/insights.js";
 
-export function TaskFormSheet({ onClose, onSave }) {
-  const [title, setTitle] = useState("");
-  const [date, setDate] = useState("");
-  const [note, setNote] = useState("");
-  const [urgent, setUrgent] = useState(false);
+export function TaskFormSheet({ task, onClose, onSave }) {
+  const isEditing = !!task;
+  const [title, setTitle] = useState(task?.title ?? "");
+  const [date, setDate] = useState(task?.date ?? "");
+  const [note, setNote] = useState(task?.note ?? "");
+  const [urgent, setUrgent] = useState(!!task?.urgent);
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -21,7 +22,7 @@ export function TaskFormSheet({ onClose, onSave }) {
   }
 
   return (
-    <Sheet title="Nova tarefa" onClose={onClose}>
+    <Sheet title={isEditing ? "Editar tarefa" : "Nova tarefa"} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium text-ritmo-text/70">
@@ -80,19 +81,21 @@ export function TaskFormSheet({ onClose, onSave }) {
           <span className="text-sm text-ritmo-text">Marcar como urgente</span>
         </label>
         <button type="submit" className="ritmo-cta min-h-11 w-full rounded-full text-sm font-semibold">
-          Salvar tarefa
+          {isEditing ? "Salvar alterações" : "Salvar tarefa"}
         </button>
       </form>
     </Sheet>
   );
 }
 
-function TaskItem({ task, onToggle, onDelete }) {
+function TaskItem({ task, onToggle, onDelete, onEdit }) {
   const isOverdue = !task.done && !!task.date && task.date < todayISO();
 
   return (
     <SwipeToDelete onDelete={() => onDelete(task.id)} deleteLabel="Excluir tarefa">
       <div className="ritmo-card flex items-center gap-2 p-4">
+        {/* Só o que marca a tarefa fica dentro do label — o lápis aqui dentro
+            marcaria a tarefa como feita a cada toque. */}
         <label className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-3">
           <input
             type="checkbox"
@@ -121,26 +124,34 @@ function TaskItem({ task, onToggle, onDelete }) {
             </p>
             {task.note && <p className="truncate text-xs text-ritmo-muted">{task.note}</p>}
           </div>
-          <span
-            className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${
-              isOverdue
-                ? "bg-ritmo-pink-light text-ritmo-pink-deep"
-                : "ritmo-glass-pill text-ritmo-ink-soft"
-            }`}
-          >
-            {isOverdue
-              ? "atrasada"
-              : task.date
-                ? formatDatePtBr(task.date)
-                : "sem data"}
-          </span>
         </label>
+        <span
+          className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${
+            isOverdue
+              ? "bg-ritmo-pink-light text-ritmo-pink-deep"
+              : "ritmo-glass-pill text-ritmo-ink-soft"
+          }`}
+        >
+          {isOverdue
+            ? "atrasada"
+            : task.date
+              ? formatDatePtBr(task.date)
+              : "sem data"}
+        </span>
+        <button
+          type="button"
+          onClick={() => onEdit(task)}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
+          aria-label="Editar tarefa"
+        >
+          <Pencil size={15} />
+        </button>
       </div>
     </SwipeToDelete>
   );
 }
 
-function TasksScreen({ tasks, ai = [], aiStatus, onToggle, onDelete, onAdd }) {
+function TasksScreen({ tasks, ai = [], aiStatus, onToggle, onDelete, onEdit, onAdd }) {
   const pending = tasks
     .filter((t) => !t.done)
     .sort((a, b) => {
@@ -185,6 +196,7 @@ function TasksScreen({ tasks, ai = [], aiStatus, onToggle, onDelete, onAdd }) {
               task={task}
               onToggle={onToggle}
               onDelete={onDelete}
+              onEdit={onEdit}
             />
           ))}
         </div>
@@ -200,6 +212,7 @@ function TasksScreen({ tasks, ai = [], aiStatus, onToggle, onDelete, onAdd }) {
                 task={task}
                 onToggle={onToggle}
                 onDelete={onDelete}
+                onEdit={onEdit}
               />
             ))}
           </div>

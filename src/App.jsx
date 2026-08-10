@@ -207,6 +207,11 @@ function App() {
     save(() => db.updateTask(id, { done }));
   }
 
+  function editTask(id, data) {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } : t)));
+    save(() => db.updateTask(id, data));
+  }
+
   function deleteTask(id) {
     setTasks((prev) => prev.filter((t) => t.id !== id));
     save(() => db.removeTask(id));
@@ -486,6 +491,7 @@ function App() {
             aiStatus={ai.status}
             onToggle={toggleTask}
             onDelete={deleteTask}
+            onEdit={(task) => setSheet({ type: "editTask", task })}
             onAdd={() => setSheet("task")}
           />
         )}
@@ -572,6 +578,13 @@ function App() {
 
       {sheet === "task" && (
         <TaskFormSheet onClose={() => setSheet(null)} onSave={addTask} />
+      )}
+      {sheet?.type === "editTask" && (
+        <TaskFormSheet
+          task={sheet.task}
+          onClose={() => setSheet(null)}
+          onSave={(data) => editTask(sheet.task.id, data)}
+        />
       )}
       {sheet === "habit" && (
         <HabitFormSheet onClose={() => setSheet(null)} onSave={addHabit} />
