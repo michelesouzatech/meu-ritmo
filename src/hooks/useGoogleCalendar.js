@@ -7,8 +7,6 @@ import {
   deleteCalendarEvent,
   fetchCalendarEvents,
   readGoogleToken,
-  renewGoogleToken,
-  saveGoogleRefreshToken,
   saveGoogleToken,
   updateCalendarEvent,
   wasEverConnected,
@@ -54,24 +52,14 @@ export function useGoogleCalendar(session) {
   const loadedRange = useRef(null);
   const fetchedAt = useRef(0);
   const providerToken = session?.provider_token ?? null;
-  const providerRefreshToken = session?.provider_refresh_token ?? null;
   const isLoggedIn = !!session?.user;
 
   useEffect(() => {
     if (providerToken) saveGoogleToken(providerToken);
   }, [providerToken]);
 
-  // O refresh token aparece uma vez só, na volta do "Conectar Google Agenda".
-  // É ele que faz a conexão durar — daqui vai direto pro servidor.
-  useEffect(() => {
-    if (providerRefreshToken) saveGoogleRefreshToken(providerRefreshToken);
-  }, [providerRefreshToken]);
-
-  // `jaRenovou` corta o vaivém: se o Google recusar até um token recém-nascido,
-  // a segunda recusa é pra valer e a tela pede pra reconectar.
-  const load = useCallback(async (focusISO, jaRenovou = false) => {
-    setStatus((prev) => (prev === "ready" ? "ready" : "loading"));
-    const token = readGoogleToken() ?? (await renewGoogleToken());
+  const load = useCallback(async (focusISO) => {
+    const token = readGoogleToken();
     if (!token) {
       setEvents([]);
       loadedRange.current = null;
@@ -80,6 +68,7 @@ export function useGoogleCalendar(session) {
     }
 
     const range = windowFor(focusISO);
+    setStatus((prev) => (prev === "ready" ? "ready" : "loading"));
     try {
       const list = await fetchCalendarEvents(token, {
         timeMin: new Date(`${range.startISO}T00:00:00`),
@@ -91,17 +80,13 @@ export function useGoogleCalendar(session) {
       setStatus("ready");
     } catch (error) {
       loadedRange.current = null;
-      if (!(error instanceof CalendarAuthError)) {
+      if (error instanceof CalendarAuthError) {
+        clearGoogleToken();
+        setEvents([]);
+        setStatus("expired");
+      } else {
         setStatus("error");
-        return;
       }
-      clearGoogleToken();
-      if (!jaRenovou && (await renewGoogleToken())) {
-        await load(focusISO, true);
-        return;
-      }
-      setEvents([]);
-      setStatus("expired");
     }
   }, []);
 
@@ -138,7 +123,7 @@ export function useGoogleCalendar(session) {
   // Depois de criar/editar/apagar, recarrega pra tela mostrar o que o Google guardou.
   const runWrite = useCallback(
     async (action) => {
-      const token = readGoogleToken() ?? (await renewGoogleToken());
+      const token = readGoogleToken();
       if (!token) {
         clearGoogleToken();
         setStatus("expired");
@@ -148,26 +133,12 @@ export function useGoogleCalendar(session) {
       try {
         result = await action(token);
       } catch (error) {
-        if (!(error instanceof CalendarAuthError)) throw error;
-        // Vencer bem na hora de salvar é o caso mais chato: a pessoa perderia o
-        // que acabou de escrever. Renova e tenta de novo antes de desistir.
-        clearGoogleToken();
-        const novoToken = await renewGoogleToken();
-        if (!novoToken) {
+        if (error instanceof CalendarAuthError) {
+          clearGoogleToken();
           setEvents([]);
           setStatus("expired");
-          throw error;
         }
-        try {
-          result = await action(novoToken);
-        } catch (segundoErro) {
-          if (segundoErro instanceof CalendarAuthError) {
-            clearGoogleToken();
-            setEvents([]);
-            setStatus("expired");
-          }
-          throw segundoErro;
-        }
+        throw error;
       }
       await load(focusDate);
       // Devolve o que o Google respondeu — quem cria uma prova precisa do id

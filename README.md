@@ -42,20 +42,19 @@ VITE_SUPABASE_ANON_KEY=...
   [src/hooks/useGoogleCalendar.js](src/hooks/useGoogleCalendar.js). Essa
   conexão usa `supabase.auth.signInWithOAuth` de novo — como a conta já tem a
   identidade Google ligada desde a época do login por Google, o Supabase
-  sempre reautentica essa mesma conta. O token de acesso vale 1 hora, mas a
-  conexão se renova sozinha — ver "Como a conexão da agenda se renova" abaixo.
+  sempre reautentica essa mesma conta. Como esse token vale 1 hora e não é
+  renovado sozinho, a tela inicial mostra o botão "Reconectar Google Agenda"
+  quando ele vence.
 - **Arquivos:** foto de perfil no bucket `avatars`, foto/PDF do treino no bucket
   `treinos` (privado, aberto por link temporário).
-- **Segurança:** RLS ligado em todas as tabelas — cada conta só enxerga e mexe
-  nos próprios dados.
+- **Segurança:** RLS ligado nas 7 tabelas — cada conta só enxerga e mexe nos
+  próprios dados.
 
 ### Tabelas
 
 `tasks`, `habits`, `habit_completions`, `workouts`, `exercises`, `carga_logs`,
-`body_fat`, `races`, `run_plans`, `run_sessions`, `workout_journal` — e
-`google_tokens`, que é a única sem policy nenhuma de propósito: guarda o
-refresh token da agenda e só a Edge Function alcança. (A agenda em si não é
-salva no banco — é lida direto do Google a cada abertura.)
+`body_fat`. (A agenda não é salva no banco — é lida direto do Google a cada
+abertura.)
 
 ## Insights
 
@@ -136,48 +135,6 @@ No mesmo projeto do Google Cloud onde está o OAuth usado pelo Supabase:
 
 Depois disso, clicar em "Conectar Google Agenda" de novo pra o Google pedir a
 nova permissão.
-
-## Como a conexão da agenda se renova
-
-O token que o Google dá pra ler a agenda vale 1 hora — e o Supabase entrega
-esse token uma vez só, na volta do login, perdendo-o quando renova a sessão.
-Por isso a agenda pedia pra reconectar de hora em hora.
-
-Quem faz durar é o **refresh token**: um segundo token, que não vence, e serve
-só pra pedir tokens de acesso novos. O caminho dele:
-
-1. "Conectar Google Agenda" pede `access_type=offline` + `prompt=consent` — sem
-   os dois o Google entende que já autorizou antes e devolve só o token de
-   1 hora ([src/lib/googleCalendar.js](src/lib/googleCalendar.js)).
-2. O refresh token volta na sessão e vai **direto pro servidor**, pra tabela
-   `google_tokens`, sem ficar no navegador — é a credencial que abre a agenda a
-   qualquer momento.
-3. Quando o token de acesso vence, o app chama a Edge Function
-   [supabase/functions/google-agenda/index.ts](supabase/functions/google-agenda/index.ts),
-   que troca o refresh token por um novo. Sem tela, sem clique.
-
-A troca exige o **segredo** do cliente OAuth, que não pode ir pro navegador —
-daí a função. Ela roda com a service role, a única que enxerga `google_tokens`
-(RLS ligado, nenhuma policy).
-
-Se o Google revogar a permissão, a função apaga a linha e o app volta a mostrar
-"Reconectar Google Agenda", como antes.
-
-### Publicar a função (uma vez, e a cada mudança nela)
-
-```bash
-npx supabase secrets set GOOGLE_CLIENT_ID=...      # os mesmos de
-npx supabase secrets set GOOGLE_CLIENT_SECRET=...  # Authentication → Providers → Google
-npx supabase functions deploy google-agenda
-```
-
-Sem esses dois segredos nada quebra: a função responde que não dá pra renovar e
-o app segue pedindo pra reconectar na mão, como antes.
-
-⚠️ **Modo "Teste" no Google Cloud vence o refresh token em 7 dias.** Enquanto o
-app estiver em Teste (Google Auth Platform → Público-alvo), a reconexão volta a
-ser necessária uma vez por semana, em vez de uma vez por hora. Publicar o app
-("Publicar aplicativo") é o que torna a conexão permanente.
 
 ## Instalar no celular (PWA)
 

@@ -9,10 +9,8 @@ export const CALENDAR_SCOPE =
 
 const TOKEN_KEY = "meuritmo:google-token";
 const CONNECTED_KEY = "meuritmo:google-connected";
-// O token que vem na volta do login não diz quanto tempo ainda tem. O do Google
-// vale 1 hora, então contamos 55 minutos pra não usar um já vencido. Quando é a
-// própria função que renova, ela manda a validade de verdade.
-const TOKEN_TTL_S = 55 * 60;
+// O token do Google vale 1 hora; guardamos com folga pra não usar um já vencido.
+const TOKEN_TTL_MS = 55 * 60 * 1000;
 const BASE_URL = "https://www.googleapis.com/calendar/v3";
 const PRIMARY = "primary";
 
@@ -30,13 +28,10 @@ export class CalendarAuthError extends Error {
 
 // O Supabase entrega o token do Google só logo depois do login, e o perde quando
 // renova a sessão — por isso guardamos por conta própria assim que ele aparece.
-export function saveGoogleToken(token, expiraEmSegundos = TOKEN_TTL_S) {
+export function saveGoogleToken(token) {
   if (!token) return;
   try {
-    // Um minuto de folga: um token que vence no meio da requisição volta como
-    // erro de permissão e faz a tela piscar o "Reconectar" sem precisar.
-    const expiresAt = Date.now() + (expiraEmSegundos - 60) * 1000;
-    localStorage.setItem(TOKEN_KEY, JSON.stringify({ token, expiresAt }));
+    localStorage.setItem(TOKEN_KEY, JSON.stringify({ token, savedAt: Date.now() }));
     localStorage.setItem(CONNECTED_KEY, "1");
   } catch {
     // Sem localStorage a agenda simplesmente pede pra conectar de novo.
@@ -56,8 +51,8 @@ export function readGoogleToken() {
   try {
     const raw = localStorage.getItem(TOKEN_KEY);
     if (!raw) return null;
-    const { token, expiresAt } = JSON.parse(raw);
-    if (!token || !expiresAt || Date.now() >= expiresAt) return null;
+    const { token, savedAt } = JSON.parse(raw);
+    if (!token || !savedAt || Date.now() - savedAt > TOKEN_TTL_MS) return null;
     return token;
   } catch {
     return null;
@@ -72,98 +67,17 @@ export function clearGoogleToken() {
   }
 }
 
-// ---------- renovar sem incomodar ----------
-//
-// O token de acesso vale 1 hora. Quem faz durar é o refresh token, que fica
-// guardado no servidor (tabela `google_tokens`) e só a Edge Function alcança —
-// ver supabase/functions/google-agenda/index.ts. Daqui a gente só pede: "me dá
-// um token novo".
-
-// Enquanto uma renovação está no ar, todo mundo espera a mesma — senão abrir o
-// app com a agenda vencida dispararia uma chamada por tela que pede eventos.
-let renovacaoNoAr = null;
-// Depois de uma falha passageira (rede, função fora do ar), não adianta tentar
-// a cada render: espera um pouco antes da próxima.
-let proximaTentativa = 0;
-// Já sabemos que não há refresh token guardado: parar de perguntar até a pessoa
-// conectar de novo, o que recarrega a página inteira e zera isto.
-let semRefreshToken = false;
-const ESPERA_APOS_FALHA_MS = 60 * 1000;
-
-async function chamarFuncao(body) {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData.session?.access_token;
-  if (!token) return null;
-
-  const { data, error } = await supabase.functions.invoke("google-agenda", {
-    body,
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return error ? null : data;
-}
-
-// Chamado quando o Google devolve um refresh token — só acontece na volta do
-// "Conectar Google Agenda". Ele vai direto pro servidor e nunca fica no
-// navegador: é a credencial que abre a agenda a qualquer momento.
-export async function saveGoogleRefreshToken(refreshToken) {
-  if (!refreshToken) return;
-  const resposta = await chamarFuncao({ acao: "salvar", refreshToken });
-  if (resposta?.ok) {
-    semRefreshToken = false;
-    proximaTentativa = 0;
-  }
-}
-
-// Devolve um token de acesso novo, ou null quando só reconectando pelo Google.
-export function renewGoogleToken() {
-  if (semRefreshToken || Date.now() < proximaTentativa) return Promise.resolve(null);
-  if (renovacaoNoAr) return renovacaoNoAr;
-
-  renovacaoNoAr = pedirTokenNovo().finally(() => {
-    renovacaoNoAr = null;
-  });
-  return renovacaoNoAr;
-}
-
-async function pedirTokenNovo() {
-  const resposta = await chamarFuncao({ acao: "token" });
-
-  if (!resposta?.ok) {
-    // "sem_refresh" e "revogado" não voltam sozinhos: o Google precisa dar uma
-    // permissão nova. "sem_config" é a função sem os segredos do Google — nesse
-    // caso o app segue como antes, pedindo pra reconectar na mão.
-    if (["sem_refresh", "revogado", "sem_config"].includes(resposta?.motivo)) {
-      semRefreshToken = true;
-    } else {
-      proximaTentativa = Date.now() + ESPERA_APOS_FALHA_MS;
-    }
-    return null;
-  }
-
-  saveGoogleToken(resposta.accessToken, resposta.expiraEm);
-  return resposta.accessToken;
-}
-
 // Manda pro Google pedindo a permissão da agenda. A conta já tem a identidade
 // Google ligada desde a época do login por Google, então o Supabase sempre
-// reautentica essa mesma conta — nunca cria ou troca pra outra.
-//
-// `access_type=offline` é o que faz o Google mandar junto o refresh token, e
-// `prompt=consent` é o que garante que ele venha: sem isso o Google entende que
-// já autorizou antes e devolve só o token de 1 hora, que era exatamente o
-// problema. O preço é a tela de consentimento aparecer nesse clique — que é
-// justamente o clique em que a pessoa está pedindo pra conectar.
+// reautentica essa mesma conta — nunca cria ou troca pra outra. Se a pessoa
+// já autorizou antes, o Google devolve na hora, sem tela de consentimento.
 export function connectGoogleCalendar() {
   return supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       scopes: CALENDAR_SCOPE,
       redirectTo: window.location.origin,
-      queryParams: {
-        include_granted_scopes: "true",
-        access_type: "offline",
-        prompt: "consent",
-      },
+      queryParams: { include_granted_scopes: "true" },
     },
   });
 }
