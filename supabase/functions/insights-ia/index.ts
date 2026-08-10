@@ -130,6 +130,9 @@ COMO LER O RESUMO
   Nunca leia o número da primeira posição como queda sem dizer que a semana não
   fechou.
 - "disposicao" vai de 1 (acabada) a 5 (ótima).
+- "diario[].anotacao" é o que ela mesma escreveu sobre aquele treino, com as
+  palavras dela. É conteúdo, não rótulo: leia, use e cite. A disposição diz o
+  quanto o treino custou; a anotação costuma dizer por quê.
 - "cargas" está em ordem cronológica: a última posição é o registro mais
   recente. O peso é texto livre, do jeito que ela digitou.
 - "regras" é o que o próprio app já calculou e JÁ ESTÁ ESCRITO NA TELA, num
@@ -153,6 +156,11 @@ SOBRE O QUE VOCÊ NÃO SABE
   aí. O que ele significa é assunto dela, não seu.
 - A regra vale pra tudo que não está escrito no resumo, não só pros números: se
   você precisou supor alguma coisa pra a frase fazer sentido, corte a frase.
+- A anotação do diário é o outro lado disso, não uma exceção à regra: lá ela
+  está te contando como o treino foi, então usar o que está escrito é ler, não
+  deduzir. O limite continua sendo o texto. "Joelho doendo" é o que ela relatou
+  naquele dia — não vira diagnóstico, não vira lesão, e não se estende aos dias
+  em que ela não escreveu nada.
 
 O QUE ESCREVER
 - Não repita "regras" com outras palavras. Aquilo a pessoa já está lendo. Se a
@@ -162,6 +170,12 @@ O QUE ESCREVER
   separadas. O dia da semana em que a corrida acontece e o dia em que os
   hábitos caem. A carga que parou de subir e o diário marcando "cansada". A
   agenda cheia e a tarefa que está encalhada há duas semanas.
+- A anotação do diário costuma ser a explicação que falta nas outras áreas: ela
+  escreveu "dormi mal" na quinta e o supino caiu na sexta; escreveu "corrida
+  leve pra soltar" no dia de pace alto. Quando a anotação sustentar a leitura,
+  traga o trecho dela entre aspas, curto, em vez de parafrasear.
+- Anotação que se repete é sinal: a mesma queixa em três registros diferentes
+  vale mais que qualquer uma delas sozinha. Diga em quantos dias ela apareceu.
 - Prefira a trajetória ao retrato: "era 3 vezes por semana, virou 1" vale mais
   que "1 vez por semana".
 - Quando apontar uma queda, procure no resumo de onde ela veio. Uma queda com
