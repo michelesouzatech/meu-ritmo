@@ -29,6 +29,7 @@ import { clearGoogleToken, connectGoogleCalendar } from "./lib/googleCalendar.js
 import { useGoogleCalendar } from "./hooks/useGoogleCalendar.js";
 import { useRunning } from "./hooks/useRunning.js";
 import { useJournal } from "./hooks/useJournal.js";
+import { useSaveQueue } from "./hooks/useSaveQueue.js";
 import { useAiInsights } from "./hooks/useAiInsights.js";
 import * as db from "./lib/db.js";
 
@@ -54,7 +55,7 @@ function App() {
   const [sheet, setSheet] = useState(null);
 
   const [loading, setLoading] = useState(true);
-  const [saveError, setSaveError] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [workoutId, setWorkoutId] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [habits, setHabits] = useState([]);
@@ -129,8 +130,9 @@ function App() {
         setBodyFat(data.bodyFat);
         setRunningData(data.running);
         setJournalData(data.journal);
+        setLoadError(false);
       } catch {
-        if (!cancelled) setSaveError(true);
+        if (!cancelled) setLoadError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -142,13 +144,10 @@ function App() {
     };
   }, [userId]);
 
-  // Salva no banco em segundo plano; se falhar, avisa em vez de sumir calado.
-  const save = useCallback((run) => {
-    Promise.resolve()
-      .then(run)
-      .then(() => setSaveError(false))
-      .catch(() => setSaveError(true));
-  }, []);
+  // Salva no banco em segundo plano. A fila insiste sozinha até o banco
+  // confirmar — uma internet que pisca não pode levar embora um registro que
+  // já apareceu na tela.
+  const { save, pending: pendingSaves, failing: saveFailing } = useSaveQueue();
 
   const running = useRunning({ userId, save, initial: runningData });
   const journal = useJournal({ userId, save, initial: journalData });
@@ -459,11 +458,23 @@ function App() {
     <div className="min-h-full flex justify-center">
       <GlassBackdrop />
       <div className="w-full max-w-md px-5 pt-8 pb-28">
-        {saveError && (
+        {loadError && (
           <div className="ritmo-card mb-4 rounded-xl px-3 py-2 text-xs text-ritmo-text">
             <span className="font-semibold text-ritmo-pink-deep">Atenção:</span> não
-            deu pra salvar na nuvem agora. Confira sua internet — o que você fez
-            continua na tela, mas pode não estar salvo.
+            deu pra buscar seus dados agora. Confira sua internet e abra o app de
+            novo.
+          </div>
+        )}
+
+        {/* Fica na tela enquanto a gravação não passa: o aviso some quando o
+            banco confirma, não quando outra coisa qualquer salva. */}
+        {saveFailing && (
+          <div className="ritmo-card mb-4 rounded-xl px-3 py-2 text-xs text-ritmo-text">
+            <span className="font-semibold text-ritmo-pink-deep">Atenção:</span> não
+            deu pra salvar na nuvem agora ({pendingSaves}{" "}
+            {pendingSaves === 1 ? "alteração esperando" : "alterações esperando"}).
+            Estamos tentando de novo sozinhos — deixe o app aberto até esse aviso
+            sumir.
           </div>
         )}
 

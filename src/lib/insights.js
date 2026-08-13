@@ -714,12 +714,20 @@ export function buildJournalInsights(
   }
   const diasRegistrados = new Set(entriesInRange(entries, desde, today).map((e) => e.date));
   const semRegistro = [...diasTreinados].filter((d) => !diasRegistrados.has(d));
+  // Compara com os dias de treino que viraram registro, não com o total de
+  // registros: o diário também guarda descanso, e contar esses fazia o número
+  // da direita passar o da esquerda ("treinou em 6 dias, mas só 7 viraram").
+  const comRegistro = diasTreinados.size - semRegistro.length;
+  const viraram =
+    comRegistro === 0
+      ? "e nenhum virou registro no diário"
+      : `mas só ${comRegistro} ${plural(comRegistro, "virou registro", "viraram registro")} no diário`;
   if (diasTreinados.size >= 3 && semRegistro.length >= 2) {
     items.push(
       w.tip(
         "buraco",
-        `Nas últimas duas semanas você treinou em ${diasTreinados.size} dias, mas só ${diasRegistrados.size} ${plural(diasRegistrados.size, "virou registro", "viraram registro")} no diário. O diário só consegue comparar o que ele enxerga.`,
-        `você treinou em ${diasTreinados.size} dias nas últimas duas semanas mas só ${diasRegistrados.size} ${plural(diasRegistrados.size, "virou registro", "viraram registro")} no diário`,
+        `Nas últimas duas semanas você treinou em ${diasTreinados.size} dias, ${viraram}. O diário só consegue comparar o que ele enxerga.`,
+        `você treinou em ${diasTreinados.size} dias nas últimas duas semanas ${viraram}`,
       ),
     );
   }
