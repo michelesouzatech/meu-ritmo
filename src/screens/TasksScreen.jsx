@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Check, Pencil } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, Pencil } from "lucide-react";
 import Sheet from "../components/Sheet.jsx";
 import AddButton from "../components/AddButton.jsx";
 import SwipeToDelete from "../components/SwipeToDelete.jsx";
@@ -151,6 +151,55 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
   );
 }
 
+// As concluídas ficam guardadas atrás de um menu que abre.
+//
+// Elas cresciam pra sempre embaixo das pendentes: depois de algumas semanas, a
+// tela de tarefas era uma lista de coisas já feitas com as pendentes espremidas
+// no topo. O que importa aqui é o que falta — o resto é arquivo, e arquivo abre
+// quando ela quiser.
+//
+// Começa fechado, e o contador no cabeçalho é o que evita que a seção pareça
+// vazia quando está.
+function DoneTasksSection({ tasks, onToggle, onDelete, onEdit }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <section>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="ritmo-card flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl p-4 text-left"
+      >
+        <span className="text-base font-semibold text-ritmo-text">Concluídas</span>
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-ink-soft">
+            {tasks.length}
+          </span>
+          <ChevronDown
+            size={16}
+            className={`text-ritmo-muted transition-transform ${open ? "rotate-180" : ""}`}
+          />
+        </span>
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-3">
+          {tasks.map((task) => (
+            <TaskItem
+              key={task.id}
+              task={task}
+              onToggle={onToggle}
+              onDelete={onDelete}
+              onEdit={onEdit}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function TasksScreen({ tasks, ai = [], aiStatus, onToggle, onDelete, onEdit, onAdd }) {
   const pending = tasks
     .filter((t) => !t.done)
@@ -161,7 +210,10 @@ function TasksScreen({ tasks, ai = [], aiStatus, onToggle, onDelete, onEdit, onA
       if (!b.date) return -1;
       return a.date.localeCompare(b.date);
     });
-  const done = tasks.filter((t) => t.done);
+  // Da mais recente pra mais antiga: virou arquivo, e arquivo se lê de cima.
+  const done = tasks
+    .filter((t) => t.done)
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   const insights = useMemo(() => buildTaskInsights(tasks), [tasks]);
 
   return (
@@ -203,20 +255,12 @@ function TasksScreen({ tasks, ai = [], aiStatus, onToggle, onDelete, onEdit, onA
       )}
 
       {done.length > 0 && (
-        <>
-          <h2 className="mb-3 text-base font-semibold text-ritmo-muted">Concluídas</h2>
-          <div className="space-y-3">
-            {done.map((task) => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onToggle={onToggle}
-                onDelete={onDelete}
-                onEdit={onEdit}
-              />
-            ))}
-          </div>
-        </>
+        <DoneTasksSection
+          tasks={done}
+          onToggle={onToggle}
+          onDelete={onDelete}
+          onEdit={onEdit}
+        />
       )}
     </div>
   );

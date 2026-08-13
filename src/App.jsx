@@ -525,6 +525,7 @@ function App() {
             gym={{
               workout,
               bodyFat,
+              journal: journal.entries,
               ai: ai.areas.gym,
               aiStatus: ai.status,
               onAddExercise: () => setSheet("exercise"),

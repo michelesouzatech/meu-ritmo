@@ -107,10 +107,33 @@ function runningLines(running, today) {
   return lines;
 }
 
+const pad = (n) => String(n).padStart(2, "0");
+const timeOf = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+
+// O aviso de amanhã.
+//
+// A versão anterior era "não esquece que tem dois compromissos amanhã na sua
+// agenda, dá uma olhada nela pra não esquecer": duas vezes "esquecer", nenhuma
+// informação. Ela saía da frase sabendo exatamente o que já sabia, e ainda
+// tinha que abrir a agenda pra descobrir o que era.
+//
+// O que muda a noite de hoje é a hora do primeiro compromisso e o nome dele —
+// é isso que a frase diz agora, em uma linha. O título vai repetido como ela
+// escreveu; o que ele significa é assunto dela.
 function agendaTomorrowLine(events, today) {
   const tomorrowEvents = eventsOnDay(events, addDays(today, 1));
   if (tomorrowEvents.length === 0) return null;
-  return `Não esquece que tem ${numberWord(tomorrowEvents.length)} compromisso${tomorrowEvents.length === 1 ? "" : "s"} amanhã na sua agenda, dá uma olhada nela pra não esquecer.`;
+
+  const timed = tomorrowEvents
+    .filter((e) => !e.allDay)
+    .sort((a, b) => a.start - b.start);
+  const first = timed[0] ?? tomorrowEvents[0];
+  const at = timed[0] ? ` às ${timeOf(first.start)}` : "";
+
+  if (tomorrowEvents.length === 1) {
+    return `Amanhã: ${first.title}${at}.`;
+  }
+  return `Amanhã você tem ${numberWord(tomorrowEvents.length)} compromissos, o primeiro é ${first.title}${at}.`;
 }
 
 // Simples, mas não simples demais: uma linha curta por assunto que importa

@@ -574,6 +574,7 @@ function CargaHistoryDropdown({ exercises }) {
 function GymTab({
   workout,
   bodyFat,
+  journal = [],
   ai = [],
   aiStatus,
   onAddExercise,
@@ -602,7 +603,12 @@ function GymTab({
 
   const sortedBodyFat = [...bodyFat].sort((a, b) => a.date.localeCompare(b.date));
   const bodyFatDesc = [...sortedBodyFat].reverse();
-  const insights = useMemo(() => buildGymInsights(workout, bodyFat), [workout, bodyFat]);
+  // O diário entra na conta de Força porque é lá que costuma estar escrito o
+  // motivo da carga que caiu — ver a regra "carga-em-bloco" em lib/insights.js.
+  const insights = useMemo(
+    () => buildGymInsights(workout, bodyFat, { journal }),
+    [workout, bodyFat, journal],
+  );
 
   // O arquivo pode vir como imagem carregada na hora ou como link salvo no banco.
   function isImageFile(url, name) {

@@ -13,6 +13,15 @@
 //    que são justamente as óbvias. Agora o limiar mínimo é sempre o menor que
 //    ainda sustenta a afirmação.
 //
+// 3. QUANDO O DIÁRIO EXPLICA, CITAR O DIÁRIO — E NUNCA FECHAR NO PALPITE.
+//    A frase que apontava a carga caindo terminava em "quando cai em bloco
+//    assim, o assunto raramente é o exercício": uma hipótese escrita por quem
+//    não tinha lido a explicação que estava a duas telas dali, no diário. Toda
+//    regra que aponta uma queda passa antes por lib/journalNotes.js pra ver se
+//    ela escreveu o motivo. Escreveu: a frase cita o que ela escreveu, entre
+//    aspas. Não escreveu: a frase fecha nos números e para — sem moral da
+//    história, que é o que fazia o painel soar genérico.
+//
 // Um insight é { id, area, tone, text, clause? }. O `clause` é a forma
 // minúscula, pronta pra entrar depois de uma vírgula — é o que o parágrafo
 // do Perfil usa. Só quem tem `clause` pode encabeçar a área lá.
@@ -31,6 +40,7 @@ import {
   weekProgress,
 } from "./running.js";
 import { activityName, entriesInRange, feelingLabel } from "./journal.js";
+import { noteExplanation, themesInRange } from "./journalNotes.js";
 import { habitProgress } from "./habitProgress.js";
 
 export const AREA_LABEL = {
@@ -286,7 +296,34 @@ export function cargaTrend(exercises = []) {
   return { subiram, caiu, comDois: subiram.length + caiu.length };
 }
 
-export function buildGymInsights(workout, bodyFat = [], today = todayISO()) {
+// `journal` entra aqui porque a explicação da carga que caiu quase nunca está
+// na aba de força — está escrita na anotação do diário do mesmo período. Sem
+// ela, esta função só sabia apontar a queda e chutar o motivo.
+// Como a explicação escrita entra na frase. Sempre no fim, sempre entre
+// aspas, sempre com as palavras dela — e sempre vazia quando ela não escreveu
+// nada, porque é aí que a frase tem que parar em vez de chutar.
+//
+// Uma anotação só é um dia; a mesma queixa em vários registros é o assunto do
+// período. As duas viram frases diferentes de propósito.
+function motivoText(motivo) {
+  if (!motivo) return "";
+  if (motivo.count === 1) {
+    return ` No diário de ${formatDatePtBr(motivo.quoteDate)} você escreveu: "${motivo.quote}".`;
+  }
+  return ` No diário você anotou ${motivo.label} em ${motivo.count} registros desse período — em ${formatDatePtBr(motivo.quoteDate)}: "${motivo.quote}".`;
+}
+
+function motivoClause(motivo) {
+  if (!motivo) return "";
+  return `, e no diário do mesmo período você escreveu "${motivo.quote}"`;
+}
+
+export function buildGymInsights(
+  workout,
+  bodyFat = [],
+  { journal = [] } = {},
+  today = todayISO(),
+) {
   const w = writer("gym");
   const items = [];
   const exercises = workout?.exercises ?? [];
@@ -342,25 +379,38 @@ export function buildGymInsights(workout, bodyFat = [], today = todayISO()) {
   /* Carga caindo em bloco é outro assunto que carga caindo num exercício.
      Um exercício que caiu pode ser dia ruim; todos caindo ao mesmo tempo é o
      corpo falando. A tela mostra um histórico por exercício, então essa
-     leitura de conjunto não existe em lugar nenhum. */
-  if (caiu.length >= 3 && caiu.length >= comDois.length * 0.75) {
-    const todos = caiu.length === comDois.length;
-    const exemplo = caiu.reduce((a, b) => (b.de - b.pra > a.de - a.pra ? b : a));
-    items.push(
-      w.down(
-        "carga-em-bloco",
-        `${todos ? `Todos os ${caiu.length} exercícios` : `${caiu.length} dos ${comDois.length} exercícios`} em que você registrou carga duas vezes vieram pra baixo na segunda — "${exemplo.e.name}" saiu de ${exemplo.de} pra ${exemplo.pra}. Quando cai em bloco assim, o assunto raramente é o exercício.`,
-        `${todos ? `todos os ${caiu.length} exercícios` : `${caiu.length} de ${comDois.length} exercícios`} com dois registros de carga vieram pra baixo na segunda vez`,
-      ),
-    );
-  } else if (caiu.length >= 2) {
-    items.push(
-      w.down(
-        "carga-caiu",
-        `A carga caiu em ${caiu.length} exercícios desde o primeiro registro, entre eles "${caiu[0].e.name}". Vale conferir se foi cansaço ou se o registro saiu errado.`,
-        `a carga caiu em ${caiu.length} exercícios desde o primeiro registro`,
-      ),
-    );
+     leitura de conjunto não existe em lugar nenhum.
+
+     E o "o corpo falando" tem nome quando ela escreveu no diário: a frase
+     antes fechava chutando que o assunto não era o exercício, com a resposta
+     escrita a duas telas dali. Agora ela é buscada. */
+  if (caiu.length >= 2) {
+    // A janela da explicação vai do dia da queda mais antiga até hoje: o que
+    // explica uma carga de terça pode ter sido escrito na quinta.
+    const desdeAQueda = caiu.map((c) => c.date).sort()[0];
+    const motivo = noteExplanation(journal, addDays(desdeAQueda, -3), today);
+
+    if (caiu.length >= 3 && caiu.length >= comDois.length * 0.75) {
+      const todos = caiu.length === comDois.length;
+      const exemplo = caiu.reduce((a, b) => (b.de - b.pra > a.de - a.pra ? b : a));
+      items.push(
+        w.down(
+          "carga-em-bloco",
+          `${todos ? `Todos os ${caiu.length} exercícios` : `${caiu.length} dos ${comDois.length} exercícios`} em que você registrou carga duas vezes vieram pra baixo na segunda — "${exemplo.e.name}" saiu de ${exemplo.de} pra ${exemplo.pra}.${motivoText(motivo)}`,
+          `${todos ? `todos os ${caiu.length} exercícios` : `${caiu.length} de ${comDois.length} exercícios`} com dois registros de carga vieram pra baixo na segunda vez${motivoClause(motivo)}`,
+          motivo ? ["journal"] : undefined,
+        ),
+      );
+    } else {
+      items.push(
+        w.down(
+          "carga-caiu",
+          `A carga caiu em ${caiu.length} exercícios desde o primeiro registro, entre eles "${caiu[0].e.name}".${motivoText(motivo)}`,
+          `a carga caiu em ${caiu.length} exercícios desde o primeiro registro${motivoClause(motivo)}`,
+          motivo ? ["journal"] : undefined,
+        ),
+      );
+    }
   }
 
   if (subiram.length > 0) {
@@ -688,6 +738,71 @@ export function buildRunningInsights(
 
 /* --------------------------------- diário -------------------------------- */
 
+// O que ela escreveu, lido como série em vez de como bilhete solto.
+//
+// A anotação de um dia está na tela, logo abaixo — repeti-la seria legenda. O
+// que a tela NÃO mostra é a repetição: o diário exibe um dia de cada vez, e
+// "dormi mal" escrito em quatro registros diferentes é uma informação que só
+// existe olhando o conjunto. É a diferença entre um dia ruim e o assunto do
+// mês dela.
+//
+// A leitura mais forte é o cruzamento com a disposição: quando a queixa
+// escrita bate com a nota baixa, o número deixa de ser humor do dia e passa a
+// ter causa — dita por ela, não suposta pelo app.
+//
+// Devolve junto os temas que já foram citados: quem escreve depois nesta mesma
+// tela precisa saber pra não citar a mesma anotação duas vezes no mesmo painel.
+function noteInsights(entries, today) {
+  const w = writer("journal");
+  const items = [];
+  const citados = new Set();
+  const desde = addDays(today, -20);
+  const temas = themesInRange(entries, desde, today);
+  if (temas.length === 0) return { items, citados };
+
+  const treinos = entries.filter(
+    (e) => e.activityType !== "rest" && e.date >= desde && e.date <= today,
+  );
+
+  // No máximo dois: o painel já divide espaço com as outras regras, e uma
+  // lista de queixas seria o oposto de útil.
+  //
+  // Só o primeiro ganha o cruzamento com a disposição. Dois insights com a
+  // mesma estrutura em sequência ("você anotou X em N registros, e nesses dias
+  // a média foi...") denunciam o molde e fazem os dois parecerem automáticos,
+  // mesmo sendo cada um uma leitura diferente.
+  temas.slice(0, 2).forEach((tema, ordem) => {
+    if (tema.count < 2) return;
+    citados.add(tema.key);
+
+    const diasComTema = new Set(tema.dates);
+    const com = treinos.filter((e) => diasComTema.has(e.date)).map((e) => e.feeling);
+    const sem = treinos.filter((e) => !diasComTema.has(e.date)).map((e) => e.feeling);
+    const mediaCom = avg(com);
+    const mediaSem = avg(sem);
+
+    if (ordem === 0 && com.length >= 2 && sem.length >= 2 && mediaSem - mediaCom >= 0.8) {
+      items.push(
+        w.down(
+          `nota-${tema.key}`,
+          `Você anotou ${tema.label} em ${tema.count} registros das últimas três semanas, e nesses dias a disposição média foi ${dec(mediaCom)} contra ${dec(mediaSem)} nos outros. Em ${formatDatePtBr(tema.quoteDate)} você escreveu: "${tema.quote}".`,
+          `nos dias em que você anota ${tema.label} a disposição média cai pra ${dec(mediaCom)}, contra ${dec(mediaSem)} nos outros dias`,
+        ),
+      );
+    } else {
+      items.push(
+        w.down(
+          `nota-${tema.key}`,
+          `Você anotou ${tema.label} em ${tema.count} dos seus registros das últimas três semanas — em ${formatDatePtBr(tema.quoteDate)}: "${tema.quote}".`,
+          `você anotou ${tema.label} em ${tema.count} registros das últimas três semanas`,
+        ),
+      );
+    }
+  });
+
+  return { items, citados };
+}
+
 // O diário recebe o treino e as corridas porque as três coisas moram na mesma
 // tela: cruzar "o que eu fiz" com "o que eu registrei" continua sendo um
 // insight da aba Treino, não do Perfil.
@@ -726,13 +841,19 @@ export function buildJournalInsights(
     items.push(
       w.tip(
         "buraco",
-        `Nas últimas duas semanas você treinou em ${diasTreinados.size} dias, ${viraram}. O diário só consegue comparar o que ele enxerga.`,
+        // Fechava com "o diário só consegue comparar o que ele enxerga" — uma
+        // moral da história em cima de uma contagem que já se explica sozinha.
+        // A contagem é o insight; o resto era enchimento.
+        `Nas últimas duas semanas você treinou em ${diasTreinados.size} dias, ${viraram}.`,
         `você treinou em ${diasTreinados.size} dias nas últimas duas semanas ${viraram}`,
       ),
     );
   }
 
   if (entries.length === 0) return sortInsights(items);
+
+  const notas = noteInsights(entries, today);
+  items.push(...notas.items);
 
   /* Qual atividade te devolve energia e qual te derruba — com dois registros
      de cada já dá pra apontar, desde que a diferença seja grande. */
@@ -820,11 +941,25 @@ export function buildJournalInsights(
   const ultimos = [...treinos].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
   const pesados = ultimos.filter((e) => e.feeling <= 2).length;
   if (ultimos.length >= 3 && pesados >= 3) {
+    // "Uma semana mais leve costuma render mais que insistir" fechava esta
+    // frase — conselho que serve pra qualquer pessoa em qualquer semana. Se ela
+    // escreveu o motivo nesses mesmos dias, o motivo entra no lugar; se não
+    // escreveu, a contagem fecha sozinha.
+    //
+    // A menos que a mesma anotação já esteja citada aqui em cima: duas linhas
+    // do mesmo painel repetindo a mesma frase entre aspas é pior que uma linha
+    // curta.
+    const causa = noteExplanation(entries, ultimos[ultimos.length - 1].date, today);
+    const motivo = causa && !notas.citados.has(causa.key) ? causa : null;
     items.push(
       w.down(
         "cansaco",
-        `${pesados} dos seus últimos ${ultimos.length} treinos vieram como "cansada" ou pior. Uma semana mais leve costuma render mais que insistir.`,
-        `${pesados} dos últimos ${ultimos.length} treinos vieram como "cansada" ou pior`,
+        `${pesados} dos seus últimos ${ultimos.length} treinos vieram como "cansada" ou pior.${
+          motivo ? ` Nesses dias você anotou ${motivo.label}: "${motivo.quote}".` : ""
+        }`,
+        `${pesados} dos últimos ${ultimos.length} treinos vieram como "cansada" ou pior${
+          motivo ? `, com ${motivo.label} anotado no diário` : ""
+        }`,
       ),
     );
   }
@@ -994,11 +1129,19 @@ export function buildCrossInsights(
     diarioRecente.length >= 2 &&
     pesadosRecentes.length >= Math.ceil(diarioRecente.length / 2)
   ) {
+    // Havendo motivo escrito, ele fecha a frase no lugar do palpite. "Sono,
+    // comida ou um dia de folga" era o app listando as três causas possíveis
+    // justamente quando ela já tinha escrito qual era.
+    const motivo = noteExplanation(journal, addDays(today, -10), today);
     items.push(
       w.down(
         "recuperacao",
-        `A carga caiu em ${tendencia.caiu.length} ${plural(tendencia.caiu.length, "exercício", "exercícios")} e ${pesadosRecentes.length} ${plural(pesadosRecentes.length, "dos seus últimos treinos veio", "dos seus últimos treinos vieram")} como "cansada" ou pior. As duas coisas apontam pro mesmo lado: não é o treino que está errado, é recuperação que está faltando — sono, comida ou um dia de folga.`,
-        `a carga caindo em ${tendencia.caiu.length} exercícios e o diário marcando treino pesado apontam pro mesmo lado: o que está faltando é recuperação, não esforço`,
+        `A carga caiu em ${tendencia.caiu.length} ${plural(tendencia.caiu.length, "exercício", "exercícios")} e ${pesadosRecentes.length} ${plural(pesadosRecentes.length, "dos seus últimos treinos veio", "dos seus últimos treinos vieram")} como "cansada" ou pior.${
+          motivo
+            ? ` Você anotou ${motivo.label} nesses dias — "${motivo.quote}". As duas coisas apontam pro mesmo lado, e o assunto é recuperação, não esforço.`
+            : " As duas coisas apontam pro mesmo lado: o que falta é recuperação, não esforço."
+        }`,
+        `a carga caindo em ${tendencia.caiu.length} exercícios e o diário marcando treino pesado apontam pro mesmo lado${motivo ? `, com ${motivo.label} anotado em ${motivo.count} ${plural(motivo.count, "registro", "registros")}` : ""}: o que está faltando é recuperação, não esforço`,
         ["gym", "journal"],
       ),
     );
@@ -1140,7 +1283,7 @@ export function buildInsights({
       today,
     ),
     habits: buildHabitInsights(habits, today),
-    gym: buildGymInsights(workout, bodyFat, today),
+    gym: buildGymInsights(workout, bodyFat, { journal }, today),
     running: buildRunningInsights(running, today),
     journal: buildJournalInsights(journal, { workout, sessions }, today),
     tasks: buildTaskInsights(tasks, today),
