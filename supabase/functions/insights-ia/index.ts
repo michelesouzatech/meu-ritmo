@@ -112,16 +112,102 @@ function chamadaAnonima(req: Request) {
   }
 }
 
+// O app gera três leituras por dia, e o que muda entre elas não são os dados —
+// vão os mesmos nas três — é a pergunta. De manhã o dia ainda não aconteceu, e
+// a única coisa útil a dizer é o que ele pede. À noite ele já aconteceu, e aí
+// cabe a conta do que rendeu e o cruzamento com as semanas anteriores.
+//
+// Sem esta divisão, as três chamadas devolveriam o mesmo texto em palavras
+// levemente diferentes — o que gasta três vezes a cota pra parecer que o app
+// mudou de opinião sozinho ao longo do dia.
+const MOMENTOS: Record<string, { paragrafos: string; acoes: string; instrucoes: string }> = {
+  manha: {
+    paragrafos: '1 a 2 parágrafos',
+    acoes: '2 a 3',
+    instrucoes: `É a leitura da manhã: o dia ainda não andou. Escreva sobre o que
+ele pede, não sobre o que ele rendeu.
+- Olhe pra frente: os compromissos de hoje na agenda, as tarefas com data de
+  hoje, as que já estão atrasadas, os hábitos que ainda não foram marcados hoje
+  e o que o plano de corrida ainda cobra nesta semana.
+- "marcadoHoje: false" às oito da manhã não é falha nenhuma — é hábito que ainda
+  cabe no dia. Nunca escreva isso como atraso ou queda.
+- Cite o dia de hoje pelo que ele tem: se a agenda mostra três compromissos e
+  duas tarefas vencendo, diga o que dá pra encaixar entre eles.
+- As ações são pra hoje, e a pessoa vai lê-las antes de sair de casa: uma tem
+  que caber no dia que ela tem pela frente.
+- Esta faixa começa à meia-noite. Se a hora for de madrugada, não deseje bom
+  dia: é a mesma leitura de abertura de dia, escrita pra quem ainda está
+  acordada.`,
+  },
+  tarde: {
+    paragrafos: '1 parágrafo, 2 no máximo',
+    // Uma ação basta: sobrou meio dia, e três sugestões pra encaixar em meio dia
+    // viram lista que ela não vai cumprir.
+    acoes: '1 a 2',
+    instrucoes: `É a leitura da tarde: o dia está na metade. Escreva sobre o que
+ainda dá tempo, não sobre a semana inteira.
+- Compare o que já foi registrado hoje com o que estava pra acontecer: hábito
+  marcado ou não, treino registrado ou não, tarefa de hoje concluída ou não.
+- O que sobrou do dia é o assunto principal. Se ainda vem compromisso na agenda
+  hoje, ele muda o que cabe — diga isso.
+- É a mais curta das três. Escolha a coisa mais importante que ainda cabe hoje e
+  fique nela; deixe a leitura larga de tendência pra noite.
+- Se o dia já andou bem, diga isso e pare. Inventar pendência pra ter o que
+  escrever é pior que uma leitura curta.`,
+  },
+  noite: {
+    paragrafos: '2 a 3 parágrafos',
+    acoes: '2 a 3',
+    instrucoes: `É a leitura da noite: o dia fechou. É a mais completa das três,
+e a única que puxa a linha longa.
+- Comece pelo que hoje rendeu — os registros com data de hoje — e daí vá pro que
+  eles dizem junto com as semanas anteriores.
+- É aqui que moram os cruzamentos entre áreas: o dia da semana em que a corrida
+  acontece e o dia em que os hábitos caem, a carga que parou de subir e o diário
+  marcando "cansada", a agenda cheia e a tarefa encalhada.
+- O que não aconteceu hoje não vira cobrança: vira o que amanhã recebe. Se a
+  agenda de amanhã já mostra o dia apertado, diga onde a coisa cabe.
+- Feche olhando pra amanhã, não pra hoje.`,
+  },
+}
+
 function buildPrompt(summary: unknown) {
-  const s = summary as { hoje?: string; diaDaSemana?: string; janelaDeDias?: number }
+  const s = summary as {
+    hoje?: string
+    diaDaSemana?: string
+    janelaDeDias?: number
+    momento?: string
+    momentoNome?: string
+    hora?: string
+  }
+
+  // Cai na noite quando o momento não veio: é a leitura completa, a mesma que o
+  // app fazia quando era uma por dia. Acontece com aparelho segurando um bundle
+  // antigo no cache do service worker.
+  const momento = MOMENTOS[s.momento ?? ''] ?? MOMENTOS.noite
 
   return `Você é o assistente do Meu Ritmo, um app de rotina pessoal. Escreve em
 português do Brasil, na segunda pessoa, falando com a própria dona desses
 registros. Ela é mulher — use concordância no feminino quando precisar.
 
-Hoje é ${s.hoje ?? '?'} (${s.diaDaSemana ?? '?'}). O resumo abaixo cobre os
-últimos ${s.janelaDeDias ?? 60} dias de cinco áreas: hábitos, força (academia),
-corrida, diário de treino e tarefas — mais a agenda, quando conectada.
+Hoje é ${s.hoje ?? '?'} (${s.diaDaSemana ?? '?'}), são ${s.hora ?? '?'}. O resumo
+abaixo cobre os últimos ${s.janelaDeDias ?? 60} dias de cinco áreas: hábitos,
+força (academia), corrida, diário de treino e tarefas — mais a agenda, quando
+conectada.
+
+O MOMENTO DO DIA
+Este app escreve três leituras por dia: uma de manhã, uma de tarde e uma de
+noite. Esta é a da ${s.momentoNome ?? 'noite'}, e ela tem trabalho próprio.
+
+${momento.instrucoes}
+
+Use a hora acima pra saber onde o dia está de verdade — cada faixa é larga, e
+ela pode estar abrindo o app na ponta dela.
+
+As outras leituras de hoje você não viu, e ela viu. Não escreva como quem
+continua um texto anterior ("como falei mais cedo"). E quando já houve uma antes
+desta hoje, não repita o que ela provavelmente disse: se a única coisa que você
+tem é o que já valia de manhã, escreva menos.
 
 ${JSON.stringify(summary, null, 2)}
 
@@ -169,7 +255,8 @@ O QUE ESCREVER
 - Seu trabalho é o que nenhuma regra fez: cruzar áreas que o app mostra
   separadas. O dia da semana em que a corrida acontece e o dia em que os
   hábitos caem. A carga que parou de subir e o diário marcando "cansada". A
-  agenda cheia e a tarefa que está encalhada há duas semanas.
+  agenda cheia e a tarefa que está encalhada há duas semanas. O quanto disso
+  cabe nesta leitura, quem manda é o momento do dia lá em cima.
 - A anotação do diário costuma ser a explicação que falta nas outras áreas: ela
   escreveu "dormi mal" na quinta e o supino caiu na sexta; escreveu "corrida
   leve pra soltar" no dia de pace alto. Quando a anotação sustentar a leitura,
@@ -191,9 +278,9 @@ SOBRE O TOM
 FORMATO
 - "perfil.titulo": uma frase de no máximo 90 caracteres com a leitura
   principal do momento dela.
-- "perfil.paragrafos": 2 a 3 parágrafos, cada um com no máximo 45 palavras.
+- "perfil.paragrafos": ${momento.paragrafos}, cada um com no máximo 45 palavras.
   É aqui que moram os cruzamentos entre áreas.
-- "perfil.acoes": 2 a 3 sugestões concretas. Cada uma tem:
+- "perfil.acoes": ${momento.acoes} sugestões concretas. Cada uma tem:
   - "emoji": um único emoji que represente literalmente o assunto — corrida →
     🏃‍♀️, academia → 🏋️‍♀️, água → 💧, sono → 😴, descanso → 🛌, leitura → 📖,
     diário → 📓, tarefa → ✅, agenda → 📅, alongamento → 🧘‍♀️. NUNCA use emoji

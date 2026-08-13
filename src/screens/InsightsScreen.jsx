@@ -90,7 +90,10 @@ function InsightsScreen({ regras, ai, onNavigate }) {
             <div className="mb-3 flex items-center gap-2">
               <span className="ritmo-glass-pill inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold text-ritmo-pink-deep">
                 <Sparkles size={12} />
-                Leitura do dia
+                {/* São três por dia, e cada uma olha pra uma coisa diferente
+                    (ver lib/momento.js). Dizer qual é evita a impressão de que
+                    o texto mudou sozinho entre uma aberta e outra. */}
+                {ai.momento ? `Leitura da ${ai.momento}` : "Leitura do dia"}
               </span>
               <span className="ml-auto text-[11px] text-ritmo-muted">{stamp(ai.geradoEm)}</span>
             </div>

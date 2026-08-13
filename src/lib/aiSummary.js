@@ -14,6 +14,7 @@
 // O que nunca entra: e-mail, id de usuário e os ids internos dos registros.
 // Não servem pra análise nenhuma e só existiriam pra vazar.
 import { todayISO, addDays, daysBetween } from "./date.js";
+import { momentoAtual } from "./momento.js";
 import { habitProgress } from "./habitProgress.js";
 import { activityName, feelingLabel } from "./journal.js";
 import {
@@ -248,12 +249,19 @@ function agendaSummary(events, today) {
 export function buildAiSummary(
   { tasks = [], habits = [], workout = null, bodyFat = [], running = null, journal = [], events = [], calendarConnected = false },
   regras = {},
+  momento = momentoAtual(),
 ) {
   const today = todayISO();
 
   return {
     hoje: today,
     diaDaSemana: weekdayOf(today),
+    // O mesmo dia rende três leituras diferentes (ver lib/momento.js). Os
+    // dados vão iguais nas três; é este campo que diz pro modelo se ele está
+    // abrindo o dia, conferindo o meio dele ou fechando a conta.
+    momento: momento.chave,
+    momentoNome: momento.nome,
+    hora: momento.hora,
     janelaDeDias: WINDOW_DAYS,
     habitos: habitSummaries(habits, today),
     forca: gymSummary(workout, bodyFat, today),

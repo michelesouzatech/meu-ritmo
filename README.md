@@ -64,7 +64,7 @@ O de baixo é determinístico: [src/lib/insights.js](src/lib/insights.js) cruza 
 registros e escreve as frases das abas e o parágrafo do Perfil. Roda a cada
 marcação, não custa nada e funciona sem internet — é o piso.
 
-Por cima entra o Gemini, uma vez por dia. Ele recebe o resumo agregado **mais o
+Por cima entra o Gemini, três vezes por dia. Ele recebe o resumo agregado **mais o
 que as regras já disseram**, justamente pra não repetir o que está na tela logo
 abaixo, e devolve as leituras que cruzam áreas que nenhuma regra cruza. Se a
 cota acabar ou a rede cair, as telas continuam com o motor de baixo.
@@ -82,8 +82,14 @@ cota acabar ou a rede cair, as telas continuam com o motor de baixo.
   Hoje vão os nomes (hábito, exercício, prova), as notas do diário e os
   compromissos da agenda; e-mail e ids nunca vão. Pra cortar um campo, basta
   parar de preenchê-lo lá.
-- **Uma geração por dia**, guardada no navegador por conta. O que muda ao longo
-  do dia continua aparecendo pelo motor de regras.
+- **Três gerações por dia** — manhã, tarde e noite
+  ([src/lib/momento.js](src/lib/momento.js)) —, cada uma guardada no navegador
+  por conta até a próxima. Não é o mesmo texto três vezes: de manhã a leitura
+  olha o que o dia pede, à tarde o que ainda dá tempo, à noite o que o dia
+  rendeu e o que isso diz junto com as semanas anteriores. As faixas cobrem o
+  dia inteiro (manhã até 12h, tarde até 18h, noite até a virada) porque a
+  leitura nasce quando o app abre, não num disparo de servidor. O que muda
+  entre uma e outra continua aparecendo na hora pelo motor de regras.
 
 ### Publicar a função (uma vez, e a cada mudança nela)
 
