@@ -2,16 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildInsights } from "../lib/insights.js";
 import { buildAiSummary, hasEnoughDataForAi } from "../lib/aiSummary.js";
 import { byArea, fetchAiInsights } from "../lib/aiInsights.js";
-import { momentoAtual, msAteProximoMomento } from "../lib/momento.js";
-import { todayISO } from "../lib/date.js";
+import { marcaDoMomento, momentoAtual, msAteProximoMomento } from "../lib/momento.js";
 
 const VAZIO = { habits: [], gym: [], running: [], journal: [], tasks: [] };
 
 // Em que momento do dia o app está agora — e quando ele virar, avisa.
 //
-// Sem isso a leitura da tarde só chegaria pra quem fechasse e abrisse o app
-// depois das 12h. Ela deixa o app aberto no celular o dia inteiro, então a
-// virada precisa acontecer sozinha.
+// É o que faz a leitura sair NA HORA marcada — 08h, 14h e 23h. Sem isso ela só
+// chegaria quando o app fosse fechado e aberto de novo depois do horário. Ela
+// deixa o app aberto no celular o dia inteiro, então a virada precisa acontecer
+// sozinha, e é este timer que garante a hora exata.
 //
 // Dois gatilhos porque nenhum dos dois basta: o timer sozinho não sobrevive ao
 // celular dormindo com o app em segundo plano, e o `visibilitychange` sozinho
@@ -28,7 +28,9 @@ function useMomento() {
       // reabriria a discussão de gerar de novo a cada conferida.
       setMomento((atual) => {
         const agora = momentoAtual();
-        return agora.chave === atual.chave ? atual : agora;
+        // Compara dia E faixa: só a faixa faria a noite de terça e a de quarta
+        // parecerem a mesma leitura pra quem deixa o app aberto virando o dia.
+        return marcaDoMomento(agora) === marcaDoMomento(atual) ? atual : agora;
       });
       clearTimeout(timer);
       timer = setTimeout(conferir, msAteProximoMomento());
@@ -102,7 +104,7 @@ export function useAiInsights({ userId, ready, data }) {
   useEffect(() => {
     if (!userId || !ready) return;
 
-    const marca = `${todayISO()}:${momento.chave}`;
+    const marca = marcaDoMomento(momento);
     if (pediuRef.current === marca) return;
 
     if (!hasEnoughDataForAi(summary)) {

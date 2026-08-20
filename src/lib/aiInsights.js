@@ -1,6 +1,6 @@
 // Ponte entre o app e a Edge Function que fala com o Gemini.
 //
-// A análise é gerada três vezes por dia — manhã, tarde e noite (ver
+// A análise é gerada três vezes por dia, em horário fixo — 08h, 14h e 23h (ver
 // lib/momento.js) — e guardada no navegador. Dentro do mesmo momento não há
 // como pedir outra, de propósito: o plano gratuito do Gemini tem cota diária, e
 // reler os mesmos registros renderia um texto levemente diferente sem ser mais
@@ -15,7 +15,6 @@
 // regras (lib/insights.js) recalcula a cada marcação, e é ele que segura os
 // painéis enquanto a camada escrita fica parada até o próximo momento.
 import { supabase } from "./supabase.js";
-import { todayISO } from "./date.js";
 
 const CACHE_PREFIX = "meuritmo:aiInsights:";
 
@@ -69,23 +68,24 @@ const cacheKey = (userId) => `${CACHE_PREFIX}${userId ?? "anon"}`;
 
 // Guarda só a leitura do momento corrente: assim que a tarde chega, a da manhã
 // não tem mais pra onde voltar na tela e só ocuparia espaço no localStorage.
-function readCache(userId, momento) {
+// `marca` é "dia:faixa" — a identidade da leitura, montada em lib/momento.js.
+// Guardava-se o dia do relógio, e isso quebrava na virada da meia-noite: à
+// 00h01 o dia mudava, a marca do cache não batia mais e o app gerava outra
+// leitura da noite com os mesmos dados que tinha lido às 23h.
+function readCache(userId, marca) {
   try {
     const raw = localStorage.getItem(cacheKey(userId));
     if (!raw) return null;
     const cached = JSON.parse(raw);
-    return cached?.dia === todayISO() && cached?.momento === momento ? cached.analise : null;
+    return cached?.marca === marca ? cached.analise : null;
   } catch {
     return null;
   }
 }
 
-function writeCache(userId, momento, analise) {
+function writeCache(userId, marca, analise) {
   try {
-    localStorage.setItem(
-      cacheKey(userId),
-      JSON.stringify({ dia: todayISO(), momento, analise }),
-    );
+    localStorage.setItem(cacheKey(userId), JSON.stringify({ marca, analise }));
   } catch {
     // Navegador sem espaço ou em aba anônima: seguir sem cache é melhor que
     // quebrar a tela — só custa uma geração a mais na próxima abertura.
@@ -110,22 +110,22 @@ async function readFunctionError(error) {
 // abertura de cada momento ainda não tem cache pra segurar a segunda chamada —
 // sem isso cada visita gastaria duas gerações da cota.
 //
-// A chamada em curso carrega o momento dela junto: se a virada das 12h pegar
-// uma geração no meio, a leitura da tarde não pode receber de volta a promessa
-// que estava buscando a da manhã.
+// A chamada em curso carrega a marca dela junto: se a virada das 14h pegar uma
+// geração no meio, a leitura da tarde não pode receber de volta a promessa que
+// estava buscando a da manhã.
 let inFlight = null;
 
 export function fetchAiInsights(summary, userId) {
-  const momento = summary.momento;
-  const cached = readCache(userId, momento);
+  const marca = summary.momentoMarca;
+  const cached = readCache(userId, marca);
   if (cached) return Promise.resolve({ ...cached, doCache: true });
-  if (inFlight?.momento === momento) return inFlight.promise;
+  if (inFlight?.marca === marca) return inFlight.promise;
 
   const promise = requestAnalysis(summary, userId).finally(() => {
     if (inFlight?.promise === promise) inFlight = null;
   });
 
-  inFlight = { momento, promise };
+  inFlight = { marca, promise };
   return promise;
 }
 
@@ -145,6 +145,6 @@ async function requestAnalysis(summary, userId) {
     throw failure;
   }
 
-  writeCache(userId, summary.momento, data);
+  writeCache(userId, summary.momentoMarca, data);
   return { ...data, doCache: false };
 }

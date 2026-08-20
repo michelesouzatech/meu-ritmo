@@ -7,7 +7,7 @@ import { ChevronDown, Lightbulb, Sparkles, TrendingDown, TrendingUp } from "luci
 //
 // Duas origens convivem aqui. As linhas da lista vêm do motor de regras
 // (lib/insights.js): contas exatas, instantâneas, que funcionam sem internet.
-// O bloco de cima vem do Gemini, uma vez por dia. Eles ficam separados na tela
+// O bloco de cima vem do Gemini, três vezes por dia. Eles ficam separados na tela
 // de propósito — texto gerado e conta feita não têm a mesma natureza, e
 // misturar os dois no mesmo formato esconderia isso de quem lê.
 const TONE = {
@@ -44,11 +44,17 @@ function InsightsPanel({ items = [], ai = [], aiStatus = "idle", max = 5, classN
 
   if (aiRows.length === 0 && ruleRows.length === 0 && !carregando) return null;
 
-  // Com a leitura da IA em cima, as linhas de regra começam todas fechadas: o
-  // card ficaria alto demais no celular mostrando os dois ao mesmo tempo.
-  // Enquanto a leitura está sendo gerada é o contrário — a linha de regra fica
-  // à vista, senão o card seria só um retângulo pulsando sem dizer nada.
-  const abertas = open ? ruleRows.length : aiRows.length > 0 ? 0 : 1;
+  // Uma linha de regra fica SEMPRE à vista, com ou sem leitura da IA em cima.
+  //
+  // Antes, ter leitura da IA fechava todas as regras atrás do "Ver mais" — pra
+  // não deixar o card alto demais no celular. O efeito colateral era o pior
+  // possível: as regras são contas exatas e a leitura escrita é a única coisa
+  // ali que pode errar, e era justamente a errável que abria o card sozinha.
+  // Quem só passava o olho lia exclusivamente o texto gerado.
+  //
+  // Uma linha é o meio-termo: o card cresce um pouco e nunca fica só com texto
+  // gerado à mostra.
+  const abertas = open ? ruleRows.length : 1;
   const visiveis = ruleRows.slice(0, abertas);
   const escondidas = ruleRows.length - visiveis.length;
 

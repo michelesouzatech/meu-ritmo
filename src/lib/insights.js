@@ -42,6 +42,7 @@ import {
 import { activityName, entriesInRange, feelingLabel } from "./journal.js";
 import { noteExplanation, themesInRange } from "./journalNotes.js";
 import { habitProgress } from "./habitProgress.js";
+import { fichaStatus, trainingDays } from "./trainingDays.js";
 
 export const AREA_LABEL = {
   habits: "Hábitos",
@@ -84,6 +85,15 @@ function writer(area) {
 
 const plural = (n, one, many) => (n === 1 ? one : many);
 const daysText = (n) => `${n} ${plural(n, "dia", "dias")}`;
+// A distância em dias é a conta certa e a palavra errada nas duas pontas: a
+// regra da ficha fechava em "você fez há 0 dias" quando a outra ficha tinha
+// acontecido hoje.
+const haQuantoTempo = (dias) => (dias === 0 ? "hoje" : dias === 1 ? "ontem" : `há ${daysText(dias)}`);
+// "12 de ago." já vem com ponto — a abreviação do mês traz o dela. Somar o
+// ponto final da frase por cima escreve "em 17 de ago..", que está na tela hoje
+// no painel de corrida. Só pra data que fecha frase; no meio dela o ponto da
+// abreviação está certo.
+const dataFinal = (iso) => formatDatePtBr(iso).replace(/\.$/, "");
 const dec = (n) => n.toFixed(1).replace(".", ",");
 
 function untilText(days) {
@@ -345,28 +355,81 @@ export function buildGymInsights(
     );
   }
 
-  /* Uma ficha ficando pra trás enquanto as outras andam. Basta um registro
-     por ficha pra isso aparecer — é comparação entre elas, não histórico. */
-  const porFicha = new Map();
-  for (const e of exercises) {
-    const logs = e.cargaLogs;
-    if (logs.length === 0) continue;
-    const ultima = logs.map((l) => l.date).sort().pop();
-    const atual = porFicha.get(e.group);
-    if (!atual || ultima > atual) porFicha.set(e.group, ultima);
+  /* Cada ficha pelas DUAS vias: quando ela foi feita (o diário guarda a ficha
+     escolhida em `activityLabel`) e quando a carga dela foi lançada. Eram a
+     mesma informação aqui dentro, e não são. */
+  const fichas = fichaStatus(workout, journal);
+  let fichaCitada = null;
+
+  /* Treinou e não deixou número. É o vão entre as duas vias, e é a leitura que
+     não existia em lugar nenhum: a tela mostra o histórico de cada exercício,
+     e um treino que aconteceu sem gerar registro de carga não aparece em
+     histórico nenhum — some.
+
+     Hoje fica de fora de propósito: ela pode lançar a carga daqui a pouco, e
+     cobrar no mesmo dia transforma o insight em alarme. */
+  const semCarga = fichas
+    .filter(
+      (f) =>
+        f.semCarga.length > 0 &&
+        daysBetween(f.semCarga[f.semCarga.length - 1], today) >= 1,
+    )
+    .sort(
+      (a, b) =>
+        b.semCarga.length - a.semCarga.length ||
+        (a.cargaEm ?? "").localeCompare(b.cargaEm ?? ""),
+    );
+
+  if (semCarga.length > 0) {
+    const f = semCarga[0];
+    const quantos = f.semCarga.length;
+    const parado = f.exercicioParado;
+    fichaCitada = f.ficha;
+
+    if (!f.cargaEm) {
+      items.push(
+        w.tip(
+          "ficha-sem-carga",
+          `Você fez o "${f.ficha}" ${quantos === 1 ? "uma vez" : `${quantos} vezes`} e nunca lançou carga em nenhum exercício dele. Sem o primeiro número, essa ficha não entra em nenhuma comparação.`,
+          `você fez o "${f.ficha}" ${quantos === 1 ? "uma vez" : `${quantos} vezes`} sem nunca lançar carga nela`,
+        ),
+      );
+    } else if (quantos === 1) {
+      items.push(
+        w.down(
+          "ficha-sem-carga",
+          `Você fez o "${f.ficha}" em ${formatDatePtBr(f.semCarga[0])} e não lançou carga nenhuma nele${parado ? ` — "${parado.name}" continua no número de ${dataFinal(f.cargaEm)}` : ""}.`,
+          `você fez o "${f.ficha}" em ${formatDatePtBr(f.semCarga[0])} sem lançar carga nenhuma`,
+        ),
+      );
+    } else {
+      items.push(
+        w.down(
+          "ficha-sem-carga",
+          `Você fez o "${f.ficha}" ${quantos} vezes desde ${formatDatePtBr(f.cargaEm)} e não lançou carga em nenhuma delas${parado ? ` — "${parado.name}" continua no número daquele dia` : ""}.`,
+          `você fez o "${f.ficha}" ${quantos} vezes desde ${formatDatePtBr(f.cargaEm)} sem lançar carga em nenhuma`,
+        ),
+      );
+    }
   }
-  if (porFicha.size >= 2) {
-    const ordenadas = [...porFicha.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-    const [fichaAtrasada, dataAtrasada] = ordenadas[0];
-    const [fichaEmDia, dataEmDia] = ordenadas[ordenadas.length - 1];
-    const atraso = daysBetween(dataAtrasada, today);
-    const diferenca = daysBetween(dataAtrasada, dataEmDia);
-    if (atraso >= 7 && diferenca >= 5) {
+
+  /* Uma ficha ficando pra trás enquanto as outras andam. "Ficar pra trás"
+     agora é não ter acontecido; antes era não ter carga lançada, e era isso
+     que fazia a frase dizer "faz 8 dias que você não registra nada do Treino
+     B" no dia 20, com o Treino B registrado no diário no dia 18. */
+  const comHistorico = fichas.filter((f) => f.ultimoDia);
+  if (comHistorico.length >= 2) {
+    const ordenadas = [...comHistorico].sort((a, b) => a.ultimoDia.localeCompare(b.ultimoDia));
+    const atrasada = ordenadas[0];
+    const emDia = ordenadas[ordenadas.length - 1];
+    const atraso = daysBetween(atrasada.ultimoDia, today);
+    const diferenca = daysBetween(atrasada.ultimoDia, emDia.ultimoDia);
+    if (atraso >= 7 && diferenca >= 5 && atrasada.ficha !== fichaCitada) {
       items.push(
         w.down(
           "ficha-atrasada",
-          `Faz ${daysText(atraso)} que você não registra nada do "${fichaAtrasada}", enquanto o "${fichaEmDia}" você atualizou há ${daysText(daysBetween(dataEmDia, today))}.`,
-          `o "${fichaAtrasada}" está parado há ${daysText(atraso)} enquanto o "${fichaEmDia}" seguiu andando`,
+          `Faz ${daysText(atraso)} que você não treina o "${atrasada.ficha}", enquanto o "${emDia.ficha}" você fez ${haQuantoTempo(daysBetween(emDia.ultimoDia, today))}.`,
+          `o "${atrasada.ficha}" está parado há ${daysText(atraso)} enquanto o "${emDia.ficha}" seguiu andando`,
         ),
       );
     }
@@ -707,7 +770,7 @@ export function buildRunningInsights(
       items.push(
         w.up(
           "recorde-distancia",
-          `Sua corrida mais longa até agora foi ${formatDistance(maior.distanceKm)}, em ${formatDatePtBr(maior.date)}.`,
+          `Sua corrida mais longa até agora foi ${formatDistance(maior.distanceKm)}, em ${dataFinal(maior.date)}.`,
           `sua corrida mais longa até agora foi ${formatDistance(maior.distanceKm)}`,
         ),
       );
@@ -803,6 +866,116 @@ function noteInsights(entries, today) {
   return { items, citados };
 }
 
+// O descanso, que até aqui era só ausência.
+//
+// Ela marca o dia de folga no diário de propósito — abre o app, escolhe
+// "Descanso", marca como se sentiu. E TODAS as regras filtravam isso pra fora
+// com `activityType !== "rest"`, então o esforço de registrar não gerava uma
+// única linha em lugar nenhum. "Registrei até o dia de descanso e ele não tá
+// contando isso" é literalmente o que o código fazia.
+//
+// Filtrar o descanso das médias de treino continua certo: descanso não é
+// treino, e misturar os dois estragaria "sua disposição vem caindo". O que
+// estava errado era não existir NENHUMA leitura em cima dele. Aqui ele vira
+// duas — e as duas são coisas que a tela não mostra, porque o calendário
+// exibe um dia de cada vez e não soma sequência nenhuma.
+function restInsights(entries, { workout, sessions }, today) {
+  const w = writer("journal");
+  const items = [];
+  const desde = addDays(today, -20);
+  const noPeriodo = entriesInRange(entries, desde, today);
+  const descansos = noPeriodo.filter((e) => e.activityType === "rest");
+  const treinos = noPeriodo.filter((e) => e.activityType !== "rest");
+
+  if (descansos.length === 0) {
+    if (treinos.length >= 10) {
+      items.push(
+        w.tip(
+          "sem-descanso",
+          `${treinos.length} treinos em três semanas e nenhum descanso registrado. Marcar o descanso também conta — é ele que explica os dias bons.`,
+        ),
+      );
+    }
+    return items;
+  }
+
+  const diasDeDescanso = new Set(descansos.map((e) => e.date));
+  const diasDeTreino = trainingDays({ workout, sessions, journal: entries });
+
+  /* O descanso funcionou? A pergunta só existe olhando o dia SEGUINTE, e o
+     diário nunca compara dois dias. Emendado é o treino cuja véspera também
+     foi treino — é o outro lado da mesma moeda, e é o que dá sentido ao
+     número. */
+  const depoisDeFolga = [];
+  const emendados = [];
+  for (const t of treinos) {
+    const vespera = addDays(t.date, -1);
+    if (diasDeDescanso.has(vespera)) depoisDeFolga.push(t.feeling);
+    else if (diasDeTreino.has(vespera)) emendados.push(t.feeling);
+  }
+  if (depoisDeFolga.length >= 2 && emendados.length >= 2) {
+    const comFolga = avg(depoisDeFolga);
+    const semFolga = avg(emendados);
+    if (comFolga - semFolga >= 0.8) {
+      items.push(
+        w.up(
+          "descanso-rende",
+          `Os treinos do dia seguinte a um descanso saem em ${dec(comFolga)} de 5; os que você emenda no dia seguinte a outro treino, ${dec(semFolga)}.`,
+          `os treinos que vêm depois de um descanso saem em ${dec(comFolga)}, contra ${dec(semFolga)} nos emendados`,
+        ),
+      );
+    }
+  }
+
+  /* A maior emenda do período: dias de treino seguidos sem nenhum descanso no
+     meio. O calendário mostra as carinhas uma a uma e não soma sequência —
+     seis dias emendados parecem seis dias soltos. */
+  let corrente = [];
+  let maior = [];
+  for (const d of daysRange(desde, today)) {
+    if (!diasDeTreino.has(d)) {
+      corrente = [];
+      continue;
+    }
+    corrente.push(d);
+    if (corrente.length > maior.length) maior = [...corrente];
+  }
+
+  if (maior.length >= 4) {
+    const naEmenda = new Set(maior);
+    const dentro = treinos.filter((t) => naEmenda.has(t.date)).map((t) => t.feeling);
+    const fora = treinos.filter((t) => !naEmenda.has(t.date)).map((t) => t.feeling);
+    const caiu =
+      dentro.length >= 2 && fora.length >= 2 && avg(fora) - avg(dentro) >= 0.6
+        ? { dentro: avg(dentro), fora: avg(fora) }
+        : null;
+    // A data no fim da frase perde o ponto da abreviação; no meio dela, o ponto
+    // fica e a vírgula vem depois ("a 04 de ago., e a disposição…").
+    const inicio = formatDatePtBr(maior[0]);
+    const fim = maior[maior.length - 1];
+
+    if (caiu) {
+      items.push(
+        w.down(
+          "emenda",
+          `Você emendou ${daysText(maior.length)} de treino sem descanso, de ${inicio} a ${formatDatePtBr(fim)}, e a disposição média nesses dias foi ${dec(caiu.dentro)} contra ${dec(caiu.fora)} no resto do período.`,
+          `sua maior emenda foi ${daysText(maior.length)} de treino sem descanso, com disposição média ${dec(caiu.dentro)} contra ${dec(caiu.fora)} no resto`,
+        ),
+      );
+    } else if (maior.length >= 6) {
+      items.push(
+        w.tip(
+          "emenda",
+          `Sua maior sequência foi ${daysText(maior.length)} de treino sem descanso, de ${inicio} a ${dataFinal(fim)}.`,
+          `sua maior sequência foi ${daysText(maior.length)} de treino sem descanso`,
+        ),
+      );
+    }
+  }
+
+  return items;
+}
+
 // O diário recebe o treino e as corridas porque as três coisas moram na mesma
 // tela: cruzar "o que eu fiz" com "o que eu registrei" continua sendo um
 // insight da aba Treino, não do Perfil.
@@ -816,17 +989,18 @@ export function buildJournalInsights(
   const treinos = entries.filter((e) => e.activityType !== "rest");
 
   /* O buraco entre treinar e registrar. Funciona já no segundo dia de uso e
-     nenhuma tela mostra: uma lista mostra o que existe, não o que falta. */
+     nenhuma tela mostra: uma lista mostra o que existe, não o que falta.
+
+     O total sai da fonte única (lib/trainingDays.js), que conta também o treino
+     que só existe no diário. Antes vinha de carga e corrida, e o denominador
+     ficava menor que a verdade: quem treina e registra no diário sem lançar
+     carga não entrava nessa conta. */
   const desde = addDays(today, -13);
-  const diasTreinados = new Set();
-  for (const e of workout?.exercises ?? []) {
-    for (const log of e.cargaLogs) {
-      if (log.date >= desde && log.date <= today) diasTreinados.add(log.date);
-    }
-  }
-  for (const s of sessions) {
-    if (s.date >= desde && s.date <= today) diasTreinados.add(s.date);
-  }
+  const diasTreinados = new Set(
+    [...trainingDays({ workout, sessions, journal: entries })].filter(
+      (d) => d >= desde && d <= today,
+    ),
+  );
   const diasRegistrados = new Set(entriesInRange(entries, desde, today).map((e) => e.date));
   const semRegistro = [...diasTreinados].filter((d) => !diasRegistrados.has(d));
   // Compara com os dias de treino que viraram registro, não com o total de
@@ -964,16 +1138,7 @@ export function buildJournalInsights(
     );
   }
 
-  const tresSemanas = entriesInRange(entries, addDays(today, -20), today);
-  const descansos = tresSemanas.filter((e) => e.activityType === "rest").length;
-  if (tresSemanas.length >= 10 && descansos === 0) {
-    items.push(
-      w.tip(
-        "sem-descanso",
-        `${tresSemanas.length} treinos em três semanas e nenhum descanso registrado. Marcar o descanso também conta — é ele que explica os dias bons.`,
-      ),
-    );
-  }
+  items.push(...restInsights(entries, { workout, sessions }, today));
 
   return sortInsights(items);
 }
@@ -1081,11 +1246,7 @@ export function buildCrossInsights(
   /* Dia de treino x hábitos: o dia em que ela treina é o dia em que o resto
      também anda, ou é o dia em que o resto desaba? */
   if (window && active.length >= 3) {
-    const diasTreino = new Set();
-    for (const e of workout?.exercises ?? []) {
-      for (const log of e.cargaLogs) diasTreino.add(log.date);
-    }
-    for (const s of sessions) diasTreino.add(s.date);
+    const diasTreino = trainingDays({ workout, sessions, journal });
 
     const com = window.filter((d) => diasTreino.has(d));
     const sem = window.filter((d) => !diasTreino.has(d));

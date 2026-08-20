@@ -14,8 +14,9 @@
 // O que nunca entra: e-mail, id de usuário e os ids internos dos registros.
 // Não servem pra análise nenhuma e só existiriam pra vazar.
 import { todayISO, addDays, daysBetween } from "./date.js";
-import { momentoAtual } from "./momento.js";
+import { momentoAtual, marcaDoMomento } from "./momento.js";
 import { habitProgress } from "./habitProgress.js";
+import { strengthDaysInRange, trainingDays, trainingDaysInRange } from "./trainingDays.js";
 import { activityName, feelingLabel } from "./journal.js";
 import {
   bestTrainingPace,
@@ -86,7 +87,7 @@ function habitSummaries(habits, today) {
 
 /* --------------------------------- força --------------------------------- */
 
-function gymSummary(workout, bodyFat, today) {
+function gymSummary(workout, bodyFat, journal, today) {
   const desde = addDays(today, -WINDOW_DAYS);
   const exercicios = (workout?.exercises ?? []).map((e) => ({
     ficha: e.group,
@@ -104,13 +105,25 @@ function gymSummary(workout, bodyFat, today) {
   return {
     fichaComecouEm: workout?.createdAt ?? null,
     exercicios,
-    diasComTreinoRegistrado: [
+    // As DUAS vias pelas quais um treino de academia é registrado, separadas e
+    // com o nome do que elas são. O campo único chamava-se
+    // "diasComTreinoRegistrado" e continha só as datas de carga — então o
+    // modelo lia a última carga como o último treino e escrevia "seu último
+    // treino registrado foi em 17 de agosto" no dia 20, com o Treino B no
+    // diário do dia 18. O nome era metade do erro.
+    diasComCargaLancada: [
       ...new Set(
         (workout?.exercises ?? []).flatMap((e) =>
           e.cargaLogs.filter((l) => l.date >= desde).map((l) => l.date),
         ),
       ),
     ].sort(),
+    diasComFichaNoDiario: [
+      ...new Set(
+        journal.filter((e) => e.activityType === "gym" && e.date >= desde).map((e) => e.date),
+      ),
+    ].sort(),
+    diasComTreinoDeForca: strengthDaysInRange({ workout, journal }, desde, today),
     gordura: [...bodyFat]
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((b) => ({ data: b.date, percentual: b.percent })),
@@ -175,6 +188,15 @@ function runningSummary(running, today) {
 
 /* --------------------------------- diário -------------------------------- */
 
+// O tipo do registro em palavra, porque o modelo lê palavra. `gym`/`run`/
+// `rest`/`other` são os valores do banco; aqui viram o que eles significam.
+const TIPO_REGISTRO = {
+  gym: "força",
+  run: "corrida",
+  rest: "descanso",
+  other: "outra atividade",
+};
+
 function journalSummary(entries, today) {
   const desde = addDays(today, -WINDOW_DAYS);
   return entries
@@ -183,14 +205,85 @@ function journalSummary(entries, today) {
     .map((e) => ({
       data: e.date,
       diaDaSemana: weekdayOf(e.date),
+      // `tipo` e `ficha` são a chave que liga este registro ao bloco "forca".
+      // Antes só saía `atividade`, um rótulo em texto livre — dava pra ler o
+      // nome da ficha e não dava pra ligar nada a nada, então o modelo tratava
+      // diário e força como duas listas sem relação e juntava as datas no
+      // chute. `descanso: true/false` saiu daqui: virou um valor de `tipo`,
+      // que é o que ele sempre foi.
+      tipo: TIPO_REGISTRO[e.activityType] ?? e.activityType,
+      ficha: e.activityType === "gym" ? e.activityLabel || null : null,
       atividade: activityName(e),
       // O número e a palavra juntos: 1 a 5 é o que dá pra comparar, mas é o
       // "acabada" que o texto final vai querer citar.
-      disposicao: e.activityType === "rest" ? null : e.feeling,
-      comoFoi: e.activityType === "rest" ? null : feelingLabel(e.feeling),
-      descanso: e.activityType === "rest",
+      //
+      // Vai também nos registros de descanso, que antes saíam com null nos
+      // dois campos. Ela marca como se sentiu no dia de folga igual marca no
+      // dia de treino, e jogar isso fora apagava a única medida que existe de
+      // como a recuperação está indo. Quem não pode misturar as duas numa
+      // média é quem lê — e `tipo` está aí do lado pra separar.
+      disposicao: e.feeling,
+      comoFoi: feelingLabel(e.feeling),
       anotacao: e.notes || null,
     }));
+}
+
+/* --------------------------------- fatos --------------------------------- */
+
+// A conta de cobertura já fechada, mandada SEMPRE — e a única fonte autorizada
+// pra qualquer frase sobre o que ela não registrou.
+//
+// Este bloco nasceu de uma frase errada na tela: "você treinou 5 vezes nas
+// últimas duas semanas, mas não deixou nenhum relato no diário", escrita no
+// mesmo painel que citava, três linhas abaixo, o que ela tinha escrito no
+// diário.
+//
+// O motor de regras sabia a resposta certa. A regra "buraco" (lib/insights.js)
+// calcula exatamente esta cobertura e só escreve quando faltam dois dias ou
+// mais; naquele dia ela ficou calada porque não faltava quase nada. E ficar
+// calada era não mandar nada: `regras` só carrega o que disparou. O modelo
+// recebia duas listas soltas, refazia a conta por conta própria e errava.
+//
+// Regra que não disparou também é informação. Aqui ela vira número, sempre.
+//
+// A janela é a mesma da regra "buraco", 14 dias, de propósito: os dois números
+// aparecem no mesmo painel, e divergir deles seria trocar um erro por outro.
+function coverageFacts({ workout, sessions, journal }, today) {
+  const desde = addDays(today, -13);
+  const noPeriodo = journal.filter((e) => e.date >= desde && e.date <= today);
+  const diasRegistrados = new Set(noPeriodo.map((e) => e.date));
+  const treinados = trainingDaysInRange({ workout, sessions, journal }, desde, today);
+
+  const datas = (lista) => [...new Set(lista.map((e) => e.date))].sort();
+  const ultima = (lista) => lista[lista.length - 1] ?? null;
+  const comAnotacao = journal.filter((e) => e.notes?.trim());
+
+  return {
+    janela: `${desde} a ${today} (14 dias)`,
+    treinouEm: treinados.length,
+    dessesRegistrouNoDiario: treinados.filter((d) => diasRegistrados.has(d)).length,
+    // As datas exatas, não só a contagem: é o que permite dizer QUAL dia ficou
+    // sem registro em vez de uma acusação genérica. Vazio quer dizer que ela
+    // registrou tudo — e é a resposta certa pra ela na maior parte dos dias.
+    diasDeTreinoSemRegistro: treinados.filter((d) => !diasRegistrados.has(d)),
+    registrosNoDiario: noPeriodo.length,
+    diasComRegistroNoDiario: datas(noPeriodo).length,
+    // Registrar e escrever são coisas diferentes, e a frase errada confundia as
+    // duas. Aqui elas são dois números com dois nomes.
+    diasComAnotacaoEscrita: datas(noPeriodo.filter((e) => e.notes?.trim())).length,
+    // As datas, não só a contagem: descanso registrado é uma decisão dela, e
+    // saber ONDE ele caiu é o que permite ler a semana. Contar era tratar o
+    // descanso como estatística; listar é tratar como registro.
+    diasDeDescanso: [
+      ...new Set(noPeriodo.filter((e) => e.activityType === "rest").map((e) => e.date)),
+    ].sort(),
+    descansosRegistrados: noPeriodo.filter((e) => e.activityType === "rest").length,
+    // Estes três olham o histórico inteiro, não a janela: dentro dela, "null"
+    // se confundiria com "nunca aconteceu".
+    ultimoTreino: ultima([...trainingDays({ workout, sessions, journal })].sort()),
+    ultimoRegistroNoDiario: ultima(datas(journal)),
+    ultimaAnotacaoEscrita: ultima(datas(comAnotacao)),
+  };
 }
 
 /* -------------------------------- tarefas -------------------------------- */
@@ -251,7 +344,12 @@ export function buildAiSummary(
   regras = {},
   momento = momentoAtual(),
 ) {
-  const today = todayISO();
+  // O dia da LEITURA, não o do relógio. São o mesmo na esmagadora maioria das
+  // vezes; separam-se quando ela abre o app depois da meia-noite e recebe a
+  // leitura das 23h, que é sobre o dia que fechou (ver lib/momento.js). Ancorar
+  // aqui é o que faz essa leitura falar do dia certo em vez de abrir um dia que
+  // ainda não aconteceu.
+  const today = momento.dia ?? todayISO();
 
   return {
     hoje: today,
@@ -261,12 +359,18 @@ export function buildAiSummary(
     // abrindo o dia, conferindo o meio dele ou fechando a conta.
     momento: momento.chave,
     momentoNome: momento.nome,
+    momentoMarca: marcaDoMomento(momento),
     hora: momento.hora,
+    // O relógio já virou o dia e a leitura é a das 23h de ontem: ela abriu o
+    // app de madrugada. O modelo precisa saber, senão escreve "hoje" pra um dia
+    // que, no relógio dela, já é ontem.
+    geradaComAtraso: !!momento.comAtraso,
     janelaDeDias: WINDOW_DAYS,
     habitos: habitSummaries(habits, today),
-    forca: gymSummary(workout, bodyFat, today),
+    forca: gymSummary(workout, bodyFat, journal, today),
     corrida: runningSummary(running, today),
     diario: journalSummary(journal, today),
+    fatos: coverageFacts({ workout, sessions: running?.sessions ?? [], journal }, today),
     tarefas: taskSummary(tasks, today),
     agenda: calendarConnected ? agendaSummary(events, today) : null,
     agendaConectada: calendarConnected,

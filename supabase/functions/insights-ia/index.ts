@@ -40,6 +40,93 @@ const DESTINOS = [...AREAS, 'agenda']
 // linha sem ícone na tela.
 const TONS = ['up', 'down', 'tip']
 
+// As chaves de `regras` vêm de lib/insights.js, em inglês; a resposta traz as
+// áreas em português. "cross" entra em todas: é a leitura que cruza áreas, e é
+// justamente a que a camada escrita tende a repetir com outras palavras.
+const REGRAS_DA_AREA: Record<string, string[]> = {
+  habitos: ['habits', 'cross'],
+  forca: ['gym', 'cross'],
+  corrida: ['running', 'cross'],
+  diario: ['journal', 'cross'],
+  tarefas: ['tasks', 'cross'],
+}
+
+const semAcento = (texto: string) =>
+  texto.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+
+const numerosDe = (texto: string) => new Set(texto.match(/\d+(?:[.,]\d+)?/g) ?? [])
+
+// "8 dias" é um fato; "8" sozinho é um algarismo. Guardar o número colado na
+// palavra que vem depois é o que separa "8 dias sem treinar" de "8 hábitos".
+const medidasDe = (texto: string) =>
+  new Set(
+    [...semAcento(texto).matchAll(/(\d+(?:[.,]\d+)?)\s+(\p{L}+)/gu)].map((m) => `${m[1]} ${m[2]}`),
+  )
+
+// Conectivo longo o bastante pra passar no filtro de tamanho e vazio o
+// bastante pra não dizer nada sobre o assunto da frase.
+const VAZIAS = new Set([
+  'quando', 'porque', 'tambem', 'ainda', 'entre', 'depois', 'antes', 'sobre',
+  'dessa', 'desse', 'desta', 'deste', 'nesse', 'nessa', 'pelos', 'pelas',
+  'todos', 'todas', 'muito', 'menos', 'mesmo', 'mesma', 'onde', 'como', 'seus',
+  'suas', 'esses', 'essas', 'estes', 'estas', 'aquilo', 'enquanto',
+])
+
+const palavrasDe = (texto: string) =>
+  new Set((semAcento(texto).match(/\p{L}{5,}/gu) ?? []).filter((p) => !VAZIAS.has(p)))
+
+// O começo do que a regra põe entre aspas: "Treino B – Foco em Quadríceps e
+// Pernas" vira "treino b". A leitura escrita encurta o nome quase sempre, então
+// comparar o nome inteiro nunca bateria.
+function nomesCitados(regra: string) {
+  return [...regra.matchAll(/"([^"]+)"/g)]
+    .map((m) => semAcento(m[1]).split(/\s+/).slice(0, 2).join(' ').trim())
+    .filter((nome) => nome.length >= 4)
+}
+
+// A leitura escrita é uma camada POR CIMA das regras, não no lugar delas — e as
+// duas dividem o mesmo card, com a dela em cima. Quando ela reescreve o que a
+// regra já diz, o card gasta duas linhas pra contar uma coisa só: foi o que
+// aconteceu no painel de Força, onde a linha da IA e a regra logo abaixo
+// contavam a mesma história do Treino B parado há 8 dias.
+//
+// O prompt já pede pra não repetir. Isto é a rede embaixo, e é deliberadamente
+// conservadora: só derruba quando a frase divide com UMA MESMA regra um número
+// específico E uma coisa que aquela regra nomeou. Bater nos dois é dizer a
+// mesma coisa; bater num só é falar do mesmo assunto, o que é permitido — errar
+// pro lado de deixar passar custa uma linha repetida, errar pro outro lado
+// engole uma leitura que só ela tinha.
+function ecoDeRegra(texto: string, regras: string[]) {
+  const numeros = numerosDe(texto)
+  // Frase sem número nenhum não dá pra acusar de repetir uma conta.
+  if (numeros.size === 0) return false
+
+  const alvo = semAcento(texto)
+  const medidas = medidasDe(texto)
+  const palavras = palavrasDe(texto)
+
+  return regras.some((regra) => {
+    const numerosIguais = [...numerosDe(regra)].filter((n) => numeros.has(n))
+    if (numerosIguais.length === 0) return false
+
+    const palavrasRegra = palavrasDe(regra)
+    const comuns = [...palavras].filter((p) => palavrasRegra.has(p)).length
+
+    // Quatro sinais independentes de que é a mesma afirmação. UM SÓ NÃO BASTA:
+    // "Treino A" citado de passagem numa leitura sobre corrida divide o nome
+    // com a regra da ficha e não está dizendo a mesma coisa. Dois sinais já é
+    // difícil de ser coincidência.
+    const sinais = [
+      nomesCitados(regra).some((nome) => alvo.includes(nome)),
+      [...medidasDe(regra)].some((m) => medidas.has(m)),
+      numerosIguais.length >= 2,
+      palavras.size > 0 && comuns / palavras.size >= 0.6,
+    ].filter(Boolean).length
+
+    return sinais >= 2
+  })
+}
+
 // Forçar JSON com schema evita o passo frágil de tentar extrair texto de uma
 // resposta em prosa livre — o modelo devolve exatamente esses campos ou a
 // requisição falha, e a tela nunca recebe algo meio montado.
@@ -135,9 +222,8 @@ ele pede, não sobre o que ele rendeu.
   duas tarefas vencendo, diga o que dá pra encaixar entre eles.
 - As ações são pra hoje, e a pessoa vai lê-las antes de sair de casa: uma tem
   que caber no dia que ela tem pela frente.
-- Esta faixa começa à meia-noite. Se a hora for de madrugada, não deseje bom
-  dia: é a mesma leitura de abertura de dia, escrita pra quem ainda está
-  acordada.`,
+- Ela sai às 08h e fica na tela até as 14h. É cedo: quase nada do dia deu tempo
+  de acontecer ainda, e cobrar alguma coisa aqui é cobrar o futuro.`,
   },
   tarde: {
     paragrafos: '1 parágrafo, 2 no máximo',
@@ -152,6 +238,8 @@ ainda dá tempo, não sobre a semana inteira.
   hoje, ele muda o que cabe — diga isso.
 - É a mais curta das três. Escolha a coisa mais importante que ainda cabe hoje e
   fique nela; deixe a leitura larga de tendência pra noite.
+- Ela sai às 14h e fica na tela até as 23h, então pode estar sendo lida às 21h,
+  com o dia quase fechado. Use a hora acima pra saber quanto sobrou de verdade.
 - Se o dia já andou bem, diga isso e pare. Inventar pendência pra ter o que
   escrever é pior que uma leitura curta.`,
   },
@@ -167,7 +255,12 @@ e a única que puxa a linha longa.
   marcando "cansada", a agenda cheia e a tarefa encalhada.
 - O que não aconteceu hoje não vira cobrança: vira o que amanhã recebe. Se a
   agenda de amanhã já mostra o dia apertado, diga onde a coisa cabe.
-- Feche olhando pra amanhã, não pra hoje.`,
+- Feche olhando pra amanhã, não pra hoje.
+- Ela sai às 23h e fica na tela até as 08h do dia seguinte. Se "geradaComAtraso"
+  vier true, ela abriu o app depois da meia-noite e você está escrevendo a
+  leitura das 23h com o relógio já virado: "hoje", no resumo, é o dia que
+  fechou, e é dele que você fala. Não deseje boa noite nem bom dia, e não
+  comente a hora — é a mesma leitura de fechamento, só lida mais tarde.`,
   },
 }
 
@@ -196,8 +289,9 @@ força (academia), corrida, diário de treino e tarefas — mais a agenda, quand
 conectada.
 
 O MOMENTO DO DIA
-Este app escreve três leituras por dia: uma de manhã, uma de tarde e uma de
-noite. Esta é a da ${s.momentoNome ?? 'noite'}, e ela tem trabalho próprio.
+Este app escreve três leituras por dia, em horário fixo: a da manhã às 08h, a da
+tarde às 14h e a da noite às 23h. Cada uma fica na tela até a próxima entrar.
+Esta é a da ${s.momentoNome ?? 'noite'}, e ela tem trabalho próprio.
 
 ${momento.instrucoes}
 
@@ -215,17 +309,39 @@ COMO LER O RESUMO
 - "marcacoesPorSemana" começa na semana atual, que ainda está em andamento.
   Nunca leia o número da primeira posição como queda sem dizer que a semana não
   fechou.
-- "disposicao" vai de 1 (acabada) a 5 (ótima).
+- "disposicao" vai de 1 (acabada) a 5 (ótima) e existe em TODO registro,
+  inclusive nos de descanso: ela marca como se sentiu no dia de folga também.
+  Mas nunca junte os dois numa média só — "disposição nos treinos" conta apenas
+  registros com "tipo" diferente de "descanso". Pra ler recuperação, o que vale
+  é o dia seguinte a um descanso comparado com o dia seguinte a um treino.
 - "diario[].anotacao" é o que ela mesma escreveu sobre aquele treino, com as
   palavras dela. É conteúdo, não rótulo: leia, use e cite. A disposição diz o
   quanto o treino custou; a anotação costuma dizer por quê.
 - Leia TODAS as anotações do período antes de escrever qualquer coisa, não só
   as dos últimos dias. É o único campo do resumo onde ela explica alguma coisa;
   todo o resto é número.
+- "diario[].tipo" diz o que foi aquele registro: "força" (e aí "ficha" traz o
+  nome da ficha que ela fez), "corrida", "descanso" ou "outra atividade".
+  Registro de descanso é registro: ela abriu o app e marcou o dia. Não é dia
+  vazio, e não é falta — é uma decisão de treino como qualquer outra, e
+  "fatos.diasDeDescanso" diz em que dias ela tomou essa decisão. Descanso nunca
+  entra numa frase como falha, ausência ou semana perdida.
 - "cargas" está em ordem cronológica: a última posição é o registro mais
   recente. O peso é texto livre, do jeito que ela digitou.
+- UM TREINO DE ACADEMIA É REGISTRADO POR DUAS VIAS INDEPENDENTES: lançando
+  carga nos exercícios ("forca.diasComCargaLancada") ou marcando a ficha no
+  diário ("forca.diasComFichaNoDiario"). "forca.diasComTreinoDeForca" é a união
+  das duas — é ele que responde "quando ela treinou". Fazer a ficha e não
+  atualizar o peso é comum e não quer dizer que o treino não aconteceu. Nunca
+  leia a data da última carga como a data do último treino.
 - "regras" é o que o próprio app já calculou e JÁ ESTÁ ESCRITO NA TELA, num
-  painel logo abaixo do seu texto.
+  painel logo abaixo do seu texto. Ela só traz o que teve o que dizer: regra
+  que ficou calada não aparece aí, e ficar calada quase sempre quer dizer que
+  estava tudo certo — nunca leia a ausência de uma regra como problema.
+- "fatos" é a conta de cobertura dos últimos 14 dias, fechada pelo app e
+  mandada sempre: quantos dias ela treinou, quantos viraram registro no diário,
+  em quantos ela escreveu texto, quais dias ficaram sem registro. Ver SOBRE
+  AUSÊNCIA mais abaixo — é a regra mais importante deste prompt.
 
 SOBRE OS NÚMEROS
 - Use apenas números que estão no resumo, ou contas simples feitas a partir
@@ -234,6 +350,29 @@ SOBRE OS NÚMEROS
   escrever menos do que preencher buraco com suposição.
 - Um registro só não é tendência. Com dois, diga "de X pra Y"; com um, diga que
   falta o segundo.
+
+SOBRE AUSÊNCIA — A REGRA MAIS IMPORTANTE DAQUI
+Afirmar que alguma coisa NÃO existe é o único tipo de frase que você não
+consegue conferir sozinho, e é onde este app já errou feio na cara dela.
+- O bloco "fatos" é a conta de cobertura dos últimos 14 dias, fechada pelo
+  próprio app. Ele é a ÚNICA fonte autorizada pra qualquer frase sobre o que ela
+  não fez, não registrou ou não escreveu. Sem número de lá, a frase não existe.
+- Nunca deduza ausência cruzando duas listas por conta própria. Já saiu na tela
+  "você treinou 5 vezes nas últimas duas semanas, mas não deixou nenhum relato
+  no diário" — no mesmo painel que citava, três linhas abaixo, o que ela tinha
+  escrito no diário. Ela registra. O que faltava era você olhar o número certo.
+- REGISTRAR NO DIÁRIO E ESCREVER UMA ANOTAÇÃO SÃO DUAS COISAS DIFERENTES, e
+  "fatos" conta as duas separadas: "dessesRegistrouNoDiario" é quantos dias de
+  treino viraram registro; "diasComAnotacaoEscrita" é em quantos ela escreveu
+  texto. Se for falar de uma, diga qual, com a palavra certa. Marcar a carinha
+  do dia já é registrar.
+- "diasDeTreinoSemRegistro" traz as datas exatas que ficaram sem registro.
+  Vazio quer dizer que ela registrou tudo: nesse caso não existe frase a
+  escrever sobre falta de registro, e insistir nela é inventar. Escreva sobre
+  outra coisa.
+- Vale pra todas as áreas, não só pro diário: hábito sem marcação hoje de manhã
+  não é hábito abandonado, e ficha sem carga nova não é treino que não
+  aconteceu.
 
 SOBRE O QUE VOCÊ NÃO SABE
 - Título de compromisso, título de tarefa e nome de hábito são rótulos que ela
@@ -405,10 +544,21 @@ Deno.serve(async (req) => {
       .filter((acao: { destino?: string }) => DESTINOS.includes(acao.destino ?? ''))
       .slice(0, 3)
 
-    const areas = (parsed.areas ?? []).filter(
-      (item: { area?: string; tom?: string; texto?: string }) =>
-        AREAS.includes(item.area ?? '') && TONS.includes(item.tom ?? '') && !!item.texto,
-    )
+    const regras = (summary as { regras?: Record<string, string[]> }).regras ?? {}
+
+    const areas = (parsed.areas ?? [])
+      .filter(
+        (item: { area?: string; tom?: string; texto?: string }) =>
+          AREAS.includes(item.area ?? '') && TONS.includes(item.tom ?? '') && !!item.texto,
+      )
+      .filter((item: { area: string; texto: string }) => {
+        const daArea = (REGRAS_DA_AREA[item.area] ?? []).flatMap((chave) => regras[chave] ?? [])
+        if (!ecoDeRegra(item.texto, daArea)) return true
+        // Vai pro log da função, não pra tela: se o filtro começar a comer
+        // leitura boa, é aqui que dá pra ver o que ele derrubou.
+        console.log('área descartada por repetir uma regra:', item.area, '|', item.texto)
+        return false
+      })
 
     return json({
       perfil: {
