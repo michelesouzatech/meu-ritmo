@@ -625,8 +625,55 @@ Deno.serve(async (req) => {
     .maybeSingle()
 
   if (existente?.analise) {
+    // `{ gerando: true }` é a trava (ver abaixo): outra chamada já está com o
+    // Gemini em andamento pra essa marca. Não é a leitura de verdade, então
+    // não devolve como se fosse — devolve erro pra tela tentar de novo em
+    // instantes, em vez de as duas chamadas caírem no Gemini juntas.
+    if (existente.analise.gerando) {
+      return json(
+        { error: 'gerando', message: 'Essa leitura já está sendo gerada. Tenta de novo em alguns segundos.' },
+        409,
+      )
+    }
     return json(existente.analise)
   }
+
+  // Reserva a marca ANTES de chamar o Gemini: é o que impede duas chamadas
+  // quase simultâneas (duas abas, celular e computador abrindo no mesmo
+  // instante) de passarem as duas pela checagem de cache acima e disparar a
+  // API em dobro. A unique key é (user_id, marca) — só a primeira consegue
+  // inserir, a segunda cai no 23505 abaixo e nem chega a montar o prompt.
+  const { error: travaError } = await supabaseUser
+    .from('ai_insights')
+    .insert({ user_id: userId, marca, dia, momento: momento ?? 'noite', analise: { gerando: true } })
+
+  if (travaError) {
+    if (travaError.code === '23505') {
+      return json(
+        { error: 'gerando', message: 'Essa leitura já está sendo gerada. Tenta de novo em alguns segundos.' },
+        409,
+      )
+    }
+    console.error('falha ao travar a geração', travaError)
+    return json({ error: 'db', message: 'Não consegui começar a gerar a leitura agora.' }, 500)
+  }
+
+  // Se qualquer coisa der errado depois daqui, a trava tem que sair — senão
+  // essa marca fica bloqueada pro resto do momento do dia, e nem o botão de
+  // "tentar de novo" da tela ajuda.
+  const destravar = async () => {
+    const { error } = await supabaseUser.from('ai_insights').delete().eq('user_id', userId).eq('marca', marca)
+    if (error) console.error('falha ao destravar a geração', error)
+  }
+
+  // Sem isto, uma resposta lenta ou pendurada do Gemini só cai quando o
+  // Supabase mata a função no teto dela (150s), e a tela fica esse tempo
+  // todo esperando pra então receber um 504 genérico. 25s é bem acima do que
+  // uma geração saudável leva (o benchmark no comentário do thinkingConfig
+  // abaixo mede segundos, não dezenas) e ainda deixa folga pra rede lenta.
+  const GEMINI_TIMEOUT_MS = 25_000
+  const timeoutController = new AbortController()
+  const timeoutId = setTimeout(() => timeoutController.abort(), GEMINI_TIMEOUT_MS)
 
   let response: Response
   try {
@@ -647,15 +694,23 @@ Deno.serve(async (req) => {
           thinkingConfig: { thinkingBudget: 512 },
         },
       }),
+      signal: timeoutController.signal,
     })
   } catch (err) {
-    console.error('falha de rede ao chamar o Gemini', err)
-    return json({ error: 'network', message: 'Não consegui falar com o Gemini agora.' }, 502)
+    const foiTimeout = err instanceof Error && err.name === 'AbortError'
+    console.error(foiTimeout ? 'Gemini não respondeu a tempo' : 'falha de rede ao chamar o Gemini', err)
+    await destravar()
+    return foiTimeout
+      ? json({ error: 'timeout', message: 'O Gemini demorou demais pra responder. Tenta de novo.' }, 504)
+      : json({ error: 'network', message: 'Não consegui falar com o Gemini agora.' }, 502)
+  } finally {
+    clearTimeout(timeoutId)
   }
 
   if (!response.ok) {
     const detail = await response.text()
     console.error('Gemini respondeu', response.status, detail)
+    await destravar()
 
     // 429 é o caso esperado no plano gratuito: a cota do dia acabou. Vale uma
     // mensagem própria porque a saída é só esperar, não mexer em nada.
@@ -676,6 +731,7 @@ Deno.serve(async (req) => {
     // Acontece quando o filtro de segurança do Gemini bloqueia a resposta: vem
     // 200 com candidato vazio, não um erro HTTP.
     console.error('resposta do Gemini sem texto', JSON.stringify(data).slice(0, 800))
+    await destravar()
     return json({ error: 'empty', message: 'O Gemini devolveu uma resposta vazia.' }, 502)
   }
 
@@ -725,30 +781,24 @@ Deno.serve(async (req) => {
       geradoEm: new Date().toISOString(),
     }
 
-    const { error: insertError } = await supabaseUser
+    // A linha já existe — é a trava que este mesmo pedido reservou lá em
+    // cima, antes de chamar o Gemini — então aqui é update, não insert. Não
+    // tem mais corrida com outro aparelho pra tratar: ninguém mais conseguiu
+    // passar pela trava pra essa marca.
+    const { error: updateError } = await supabaseUser
       .from('ai_insights')
-      .insert({ user_id: userId, marca, dia, momento: momento ?? 'noite', analise })
+      .update({ analise })
+      .eq('user_id', userId)
+      .eq('marca', marca)
 
-    if (insertError) {
-      if (insertError.code === '23505') {
-        // Outro aparelho gravou entre a checagem lá em cima e agora: a leitura
-        // dele já é a que vale daqui pra frente, então é ela que volta — não
-        // esta que acabou de sair do Gemini, ou as duas telas voltariam a
-        // divergir.
-        const { data: corrida } = await supabaseUser
-          .from('ai_insights')
-          .select('analise')
-          .eq('marca', marca)
-          .maybeSingle()
-        if (corrida?.analise) return json(corrida.analise)
-      } else {
-        console.error('falha ao gravar ai_insights', insertError)
-      }
+    if (updateError) {
+      console.error('falha ao gravar ai_insights', updateError)
     }
 
     return json(analise)
   } catch (err) {
     console.error('JSON inválido vindo do Gemini', err, text.slice(0, 500))
+    await destravar()
     return json({ error: 'parse', message: 'A resposta do Gemini veio fora do formato.' }, 502)
   }
 })

@@ -28,9 +28,11 @@ import {
 } from "./running.js";
 import { formatDuration, formatPace } from "./pace.js";
 
-// Dois meses de histórico. É a janela onde o app consegue comparar "agora"
-// com "antes" sem mandar a vida inteira da pessoa numa requisição só.
-const WINDOW_DAYS = 60;
+// Um mês de histórico. É a janela onde o app consegue comparar "agora" com
+// "antes" sem mandar a vida inteira da pessoa numa requisição só — e sem
+// inchar o prompt a ponto de pesar na velocidade da geração (ver comentário
+// do thinkingConfig em supabase/functions/insights-ia/index.ts).
+const WINDOW_DAYS = 30;
 const SEMANAS = 8;
 
 // Cargas por exercício. Seis registros já mostram a trajetória; a lista
