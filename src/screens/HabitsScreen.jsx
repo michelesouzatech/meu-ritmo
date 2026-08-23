@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, Trash2, RotateCcw, Flame, ChevronDown, Pencil, GripVertical, Repeat, Pill } from "lucide-react";
+import { Check, Trash2, RotateCcw, Flame, Pencil, GripVertical, Repeat, Pill } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -19,8 +19,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import Sheet from "../components/Sheet.jsx";
 import AddButton from "../components/AddButton.jsx";
-import HabitCalendar from "../components/HabitCalendar.jsx";
 import HabitWeekStrip from "../components/HabitWeekStrip.jsx";
+import DateDropdown from "../components/DateDropdown.jsx";
 import InsightsPanel from "../components/InsightsPanel.jsx";
 import SupplementsTab from "./SupplementsTab.jsx";
 import { todayISO, formatDatePtBr } from "../lib/date.js";
@@ -291,46 +291,6 @@ function SortableHabitItem({ habit, date, onToggleDate, onDelete, onRestart, onE
   );
 }
 
-function DateDropdown({ selectedDate, onSelectDate, habits }) {
-  const [open, setOpen] = useState(false);
-  const today = todayISO();
-  const label = selectedDate === today ? "Hoje" : formatDatePtBr(selectedDate);
-
-  return (
-    <div className="relative mb-3 inline-block">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="ritmo-card flex min-h-9 items-center gap-1 rounded-full px-3 py-1.5 text-sm font-semibold text-ritmo-text"
-      >
-        {label}
-        <ChevronDown
-          size={16}
-          className={`transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {open && (
-        <>
-          <button
-            type="button"
-            aria-label="Fechar calendário"
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 cursor-default"
-          />
-          <div className="ritmo-glass absolute left-0 top-full z-50 mt-2 w-[300px] max-w-[calc(100vw-2.5rem)] rounded-2xl p-4">
-            <HabitCalendar
-              habits={habits}
-              selectedDate={selectedDate}
-              onSelectDate={onSelectDate}
-            />
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 function HabitsTab({
   habits,
   ai = [],
@@ -457,7 +417,7 @@ function HabitsScreen({
       {tab === "supplements" && (
         <SupplementsTab
           supplements={supplements}
-          onToggleToday={onToggleSupplementDate}
+          onToggleDate={onToggleSupplementDate}
           onDelete={onDeleteSupplement}
           onEdit={onEditSupplement}
           onAdd={onAddSupplement}

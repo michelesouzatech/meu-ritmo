@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, Trash2, Pencil, Flame } from "lucide-react";
 import Sheet from "../components/Sheet.jsx";
 import AddButton from "../components/AddButton.jsx";
-import { todayISO } from "../lib/date.js";
+import HabitWeekStrip from "../components/HabitWeekStrip.jsx";
+import DateDropdown from "../components/DateDropdown.jsx";
+import { todayISO, formatDatePtBr } from "../lib/date.js";
 
 export function SupplementFormSheet({ supplement, onClose, onSave }) {
   const isEditing = !!supplement;
@@ -88,25 +90,31 @@ function streakFor(takenDates) {
   return streak;
 }
 
-function SupplementCard({ supplement, onToggleToday, onDelete, onEdit }) {
+function SupplementCard({ supplement, date, onToggleDate, onDelete, onEdit }) {
   const today = todayISO();
-  const takenToday = supplement.takenDates.includes(today);
+  const isEditingToday = date === today;
+  const takenOnDate = supplement.takenDates.includes(date);
   const streak = streakFor(supplement.takenDates);
+  const canEdit = date <= today;
 
   return (
     <div className="ritmo-card rounded-2xl p-3.5">
+      {!isEditingToday && (
+        <p className="mb-2 text-xs font-medium text-ritmo-ink-soft">{formatDatePtBr(date)}</p>
+      )}
       <div className="flex items-start gap-3">
         <button
           type="button"
-          onClick={() => onToggleToday(supplement.id, today)}
-          aria-label={takenToday ? "Desmarcar como tomado hoje" : "Marcar como tomado hoje"}
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
-            takenToday
+          onClick={() => canEdit && onToggleDate(supplement.id, date)}
+          disabled={!canEdit}
+          aria-label={takenOnDate ? "Desmarcar como tomado" : "Marcar como tomado"}
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border-2 transition-colors disabled:opacity-60 ${
+            takenOnDate
               ? "border-ritmo-pink-deep bg-ritmo-pink-deep text-white"
               : "border-ritmo-line bg-white/60"
           }`}
         >
-          {takenToday && <Check size={16} strokeWidth={3} />}
+          {takenOnDate && <Check size={16} strokeWidth={3} />}
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-ritmo-text">{supplement.name}</p>
@@ -143,7 +151,15 @@ function SupplementCard({ supplement, onToggleToday, onDelete, onEdit }) {
   );
 }
 
-function SupplementsTab({ supplements, onToggleToday, onDelete, onEdit, onAdd }) {
+function SupplementsTab({ supplements, onToggleDate, onDelete, onEdit, onAdd }) {
+  const [selectedDate, setSelectedDate] = useState(todayISO());
+  // HabitCalendar/HabitWeekStrip só olham pra `name` + `completions` — os
+  // mesmos componentes do histórico de hábitos servem aqui sem duplicar nada.
+  const asHabitShape = useMemo(
+    () => supplements.map((s) => ({ id: s.id, name: s.name, completions: s.takenDates })),
+    [supplements],
+  );
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -156,17 +172,31 @@ function SupplementsTab({ supplements, onToggleToday, onDelete, onEdit, onAdd })
           Toque no botão + para cadastrar seu primeiro suplemento.
         </p>
       ) : (
-        <div className="space-y-3">
-          {supplements.map((supplement) => (
-            <SupplementCard
-              key={supplement.id}
-              supplement={supplement}
-              onToggleToday={onToggleToday}
-              onDelete={onDelete}
-              onEdit={onEdit}
-            />
-          ))}
-        </div>
+        <>
+          <DateDropdown
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            habits={asHabitShape}
+            emptyLabel="Nenhum suplemento tomado nesse dia."
+          />
+          <HabitWeekStrip
+            habits={asHabitShape}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+          />
+          <div className="space-y-3">
+            {supplements.map((supplement) => (
+              <SupplementCard
+                key={supplement.id}
+                supplement={supplement}
+                date={selectedDate}
+                onToggleDate={onToggleDate}
+                onDelete={onDelete}
+                onEdit={onEdit}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

@@ -12,7 +12,7 @@ function formatMonthLabel(date) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function HabitCalendar({ habits, selectedDate, onSelectDate }) {
+function HabitCalendar({ habits, selectedDate, onSelectDate, emptyLabel = "Nenhum hábito marcado nesse dia." }) {
   const today = todayISO();
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
@@ -113,7 +113,7 @@ function HabitCalendar({ habits, selectedDate, onSelectDate }) {
           })}
         </p>
         {selectedHabits.length === 0 ? (
-          <p className="text-xs text-ritmo-muted">Nenhum hábito marcado nesse dia.</p>
+          <p className="text-xs text-ritmo-muted">{emptyLabel}</p>
         ) : (
           <ul className="space-y-1">
             {selectedHabits.map((name, i) => (
