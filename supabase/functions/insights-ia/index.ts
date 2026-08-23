@@ -15,6 +15,8 @@
 // encalhada), então dividir em cinco requisições gastaria cinco vezes a cota
 // pra entregar uma leitura pior — cada pedaço cego sobre o resto.
 
+import { createClient } from 'jsr:@supabase/supabase-js@2'
+
 // Versão fixa de propósito: os apelidos "-latest" trocam de modelo sozinhos, e
 // o prompt daqui foi escrito em cima do comportamento deste. Se ele sair do ar
 // um dia, o erro vem como 404 no log da função.
@@ -53,6 +55,102 @@ const REGRAS_DA_AREA: Record<string, string[]> = {
 
 const semAcento = (texto: string) =>
   texto.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+
+// Mesma conta de dia da semana que src/lib/aiSummary.js faz no front, pra
+// conferir contra "fatos.ultimoTreino" sem precisar confiar que o modelo leu
+// o campo certo.
+const WEEKDAY = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
+const weekdayOf = (iso: string) => WEEKDAY[new Date(`${iso}T00:00:00`).getDay()]
+
+// O prompt já pede pra nunca ler a data da última carga como a data do
+// último treino (ver MOMENTOS/buildPrompt), e mesmo assim já saiu errado — foi
+// esse exato caso que abriu o problema: "seu último treino registrado foi em
+// 17 de agosto" no dia 20, com treino no diário do dia 18 (ver comentário em
+// src/lib/aiSummary.js). "cargas" fica bem perto da frase no resumo e puxa o
+// modelo pro dia errado. Isto é a rede embaixo, no mesmo espírito de
+// `ecoDeRegra` — não confia que a instrução sozinha basta, confere o fato
+// depois que o texto já saiu.
+const SEM_FEIRA = new Set(['domingo', 'sábado'])
+const rotuloDoDia = (dia: string, comFeira: boolean) =>
+  comFeira && !SEM_FEIRA.has(dia) ? `${dia}-feira` : dia
+
+const MESES = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+]
+
+// A data que o modelo pode citar aparece em três formatos: dia da semana
+// ("quarta"), numérico ("17/08") ou por extenso ("17 de agosto") — o bug
+// original era justamente o formato por extenso, que a primeira versão desta
+// rede não pegava.
+const DIA_SEMANA_RE =
+  '(?:domingo|segunda(?:-feira)?|ter[cç]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[aá]bado)'
+const DATA_NUMERICA_RE = '\\d{1,2}\\/\\d{1,2}(?:\\/\\d{2,4})?'
+const DATA_MES_RE = `\\d{1,2}\\s+de\\s+(?:${MESES.join('|')})`
+const DATA_RE = `(${DIA_SEMANA_RE}|${DATA_NUMERICA_RE}|${DATA_MES_RE})`
+
+// Três jeitos de afirmar "quando foi o último treino", os que já apareceram
+// na prática: "não treina desde X", "último treino ... foi/aconteceu/
+// registrado ... em X" (o caso real) e "treinou ... pela última vez ... em
+// X". Até 60 caracteres de distância entre o gatilho e a data — perto o
+// bastante pra ser a mesma afirmação, longe o bastante pra cobrir "não treina
+// há 4 dias, desde segunda". Conservador de propósito: errar pro lado de não
+// corrigir custa uma frase errada; errar pro outro lado estraga uma frase que
+// estava certa.
+const CLAIM_TREINO_DATA = new RegExp(
+  '(?:' +
+    `n[aã]o\\s+trein\\w*[^.]{0,60}?desde` +
+    `|[uú]ltim[oa]\\s+trein\\w*[^.]{0,60}?(?:foi|aconteceu|registrad\\w*)[^.]{0,30}?(?:em|dia)` +
+    `|trein\\w*[^.]{0,50}?pela\\s+[uú]ltima\\s+vez[^.]{0,30}?(?:em|dia)` +
+  `)\\s+${DATA_RE}`,
+  'gi',
+)
+
+const estiloDaData = (data: string): 'semana' | 'numerica' | 'mes' => {
+  if (new RegExp(`^${DIA_SEMANA_RE}$`, 'i').test(data)) return 'semana'
+  if (/^\d{1,2}\//.test(data)) return 'numerica'
+  return 'mes'
+}
+
+// Confere a data citada contra a data correta no MESMO formato em que ela foi
+// citada — comparar "quarta" com "17/08" não diz nada.
+function mesmaData(iso: string, dataCitada: string, estilo: 'semana' | 'numerica' | 'mes'): boolean {
+  const d = new Date(`${iso}T00:00:00`)
+  if (estilo === 'semana') {
+    const citadoNormalizado = semAcento(dataCitada).replace('-feira', '')
+    return citadoNormalizado === semAcento(weekdayOf(iso))
+  }
+  if (estilo === 'numerica') {
+    const [diaC, mesC] = dataCitada.split('/').map((n) => parseInt(n, 10))
+    return diaC === d.getDate() && mesC === d.getMonth() + 1
+  }
+  const m = dataCitada.match(/^(\d{1,2})\s+de\s+(\p{L}+)/u)
+  if (!m) return true
+  const mes = MESES.findIndex((nome) => semAcento(nome) === semAcento(m[2]))
+  return parseInt(m[1], 10) === d.getDate() && mes === d.getMonth()
+}
+
+function rotuloCorreto(iso: string, estilo: 'semana' | 'numerica' | 'mes', comFeira: boolean): string {
+  const d = new Date(`${iso}T00:00:00`)
+  if (estilo === 'semana') return rotuloDoDia(weekdayOf(iso), comFeira)
+  if (estilo === 'numerica') {
+    const dia = String(d.getDate()).padStart(2, '0')
+    const mes = String(d.getMonth() + 1).padStart(2, '0')
+    return `${dia}/${mes}`
+  }
+  return `${d.getDate()} de ${MESES[d.getMonth()]}`
+}
+
+function corrigirDiaDeTreino(texto: string, ultimoTreinoISO: string | null): string {
+  if (!ultimoTreinoISO || !texto) return texto
+  return texto.replace(CLAIM_TREINO_DATA, (trecho, dataCitada: string) => {
+    const estilo = estiloDaData(dataCitada)
+    if (mesmaData(ultimoTreinoISO, dataCitada, estilo)) return trecho
+    const rotulo = rotuloCorreto(ultimoTreinoISO, estilo, /-feira/i.test(dataCitada))
+    console.log('data de treino corrigida no texto:', dataCitada, '->', rotulo)
+    return trecho.replace(dataCitada, rotulo)
+  })
+}
 
 const numerosDe = (texto: string) => new Set(texto.match(/\d+(?:[.,]\d+)?/g) ?? [])
 
@@ -333,7 +431,11 @@ COMO LER O RESUMO
   diário ("forca.diasComFichaNoDiario"). "forca.diasComTreinoDeForca" é a união
   das duas — é ele que responde "quando ela treinou". Fazer a ficha e não
   atualizar o peso é comum e não quer dizer que o treino não aconteceu. Nunca
-  leia a data da última carga como a data do último treino.
+  leia a data da última carga como a data do último treino. Qualquer frase que
+  diga "não treina desde [dia]" ou "há X dias sem treinar" TEM que usar
+  "fatos.ultimoTreino" (ou "forca.diasComTreinoDeForca") como fonte da data —
+  nunca a data mais recente dentro de "cargas". Exemplo: se a última carga é
+  de segunda e "fatos.ultimoTreino" diz quarta, a frase fala de quarta.
 - "regras" é o que o próprio app já calculou e JÁ ESTÁ ESCRITO NA TELA, num
   painel logo abaixo do seu texto. Ela só traz o que teve o que dizer: regra
   que ficou calada não aparece aí, e ficar calada quase sempre quer dizer que
@@ -483,6 +585,49 @@ Deno.serve(async (req) => {
     return json({ error: 'payload', message: 'Resumo ausente ou inválido.' }, 400)
   }
 
+  // A leitura de cada momento é uma só, não uma por aparelho — "marca" é a
+  // mesma identidade dia:faixa que o front usa pro cache local (ver
+  // lib/momento.js). Duas abas, ou o celular e o computador, abrindo o app na
+  // mesma faixa não podem virar duas gerações (e duas cotas) do Gemini pra
+  // perguntas idênticas.
+  const marca = (summary as { momentoMarca?: string }).momentoMarca
+  const momento = (summary as { momento?: string }).momento
+  if (typeof marca !== 'string' || !marca.includes(':')) {
+    return json({ error: 'payload', message: 'Resumo sem identificação do momento do dia.' }, 400)
+  }
+  const dia = marca.split(':')[0]
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('SUPABASE_URL ou SUPABASE_ANON_KEY não configuradas')
+    return json({ error: 'config', message: 'Configuração do Supabase ausente.' }, 500)
+  }
+
+  // O token de quem chamou já foi conferido pelo gateway (verify_jwt) antes de
+  // chegar aqui. Passá-lo adiante faz a RLS da tabela valer sozinha — não
+  // precisa decidir "de quem é essa leitura" na mão, só repassar quem já está
+  // autenticado.
+  const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
+  })
+
+  const { data: userData, error: userError } = await supabaseUser.auth.getUser()
+  const userId = userData?.user?.id
+  if (userError || !userId) {
+    return json({ error: 'auth', message: 'Precisa estar logada pra gerar a leitura.' }, 401)
+  }
+
+  const { data: existente } = await supabaseUser
+    .from('ai_insights')
+    .select('analise')
+    .eq('marca', marca)
+    .maybeSingle()
+
+  if (existente?.analise) {
+    return json(existente.analise)
+  }
+
   let response: Response
   try {
     response = await fetch(GEMINI_URL, {
@@ -546,11 +691,18 @@ Deno.serve(async (req) => {
 
     const regras = (summary as { regras?: Record<string, string[]> }).regras ?? {}
 
+    const ultimoTreinoISO =
+      (summary as { fatos?: { ultimoTreino?: string | null } }).fatos?.ultimoTreino ?? null
+
     const areas = (parsed.areas ?? [])
       .filter(
         (item: { area?: string; tom?: string; texto?: string }) =>
           AREAS.includes(item.area ?? '') && TONS.includes(item.tom ?? '') && !!item.texto,
       )
+      .map((item: { area: string; tom: string; texto: string }) => ({
+        ...item,
+        texto: corrigirDiaDeTreino(item.texto, ultimoTreinoISO),
+      }))
       .filter((item: { area: string; texto: string }) => {
         const daArea = (REGRAS_DA_AREA[item.area] ?? []).flatMap((chave) => regras[chave] ?? [])
         if (!ecoDeRegra(item.texto, daArea)) return true
@@ -560,16 +712,41 @@ Deno.serve(async (req) => {
         return false
       })
 
-    return json({
+    const analise = {
       perfil: {
-        titulo: parsed.perfil?.titulo ?? '',
-        paragrafos: parsed.perfil?.paragrafos ?? [],
+        titulo: corrigirDiaDeTreino(parsed.perfil?.titulo ?? '', ultimoTreinoISO),
+        paragrafos: (parsed.perfil?.paragrafos ?? []).map((p: string) =>
+          corrigirDiaDeTreino(p, ultimoTreinoISO),
+        ),
         acoes,
       },
       areas,
       modelo: GEMINI_MODEL,
       geradoEm: new Date().toISOString(),
-    })
+    }
+
+    const { error: insertError } = await supabaseUser
+      .from('ai_insights')
+      .insert({ user_id: userId, marca, dia, momento: momento ?? 'noite', analise })
+
+    if (insertError) {
+      if (insertError.code === '23505') {
+        // Outro aparelho gravou entre a checagem lá em cima e agora: a leitura
+        // dele já é a que vale daqui pra frente, então é ela que volta — não
+        // esta que acabou de sair do Gemini, ou as duas telas voltariam a
+        // divergir.
+        const { data: corrida } = await supabaseUser
+          .from('ai_insights')
+          .select('analise')
+          .eq('marca', marca)
+          .maybeSingle()
+        if (corrida?.analise) return json(corrida.analise)
+      } else {
+        console.error('falha ao gravar ai_insights', insertError)
+      }
+    }
+
+    return json(analise)
   } catch (err) {
     console.error('JSON inválido vindo do Gemini', err, text.slice(0, 500))
     return json({ error: 'parse', message: 'A resposta do Gemini veio fora do formato.' }, 502)
