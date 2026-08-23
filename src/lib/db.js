@@ -29,6 +29,15 @@ const toHabit = (r) => ({
   completions: [],
 });
 
+const toSupplement = (r) => ({
+  id: r.id,
+  name: r.name,
+  scheduleLabel: r.schedule_label ?? "",
+  dose: r.dose ?? "",
+  active: r.active,
+  takenDates: [],
+});
+
 const toExercise = (r) => ({
   id: r.id,
   group: r.group_name,
@@ -107,6 +116,15 @@ function habitColumns(data) {
   if ("name" in data) out.name = data.name;
   if ("periodDays" in data) out.period_days = data.periodDays ?? null;
   if ("startDate" in data) out.start_date = data.startDate;
+  return out;
+}
+
+function supplementColumns(data) {
+  const out = {};
+  if ("name" in data) out.name = data.name;
+  if ("scheduleLabel" in data) out.schedule_label = data.scheduleLabel ?? "";
+  if ("dose" in data) out.dose = data.dose ?? "";
+  if ("active" in data) out.active = !!data.active;
   return out;
 }
 
@@ -196,6 +214,8 @@ export async function loadAll(userId) {
     taskRows,
     habitRows,
     completionRows,
+    supplementRows,
+    supplementLogRows,
     exerciseRows,
     cargaRows,
     bodyFatRows,
@@ -219,6 +239,17 @@ export async function loadAll(userId) {
         .then(unwrap),
       supabase
         .from("habit_completions")
+        .select("*")
+        .eq("user_id", userId)
+        .then(unwrap),
+      supabase
+        .from("supplements")
+        .select("*")
+        .eq("user_id", userId)
+        .order("position")
+        .then(unwrap),
+      supabase
+        .from("supplement_logs")
         .select("*")
         .eq("user_id", userId)
         .then(unwrap),
@@ -273,6 +304,12 @@ export async function loadAll(userId) {
     habitById.get(row.habit_id)?.completions.push(row.completion_date);
   }
 
+  const supplements = supplementRows.map(toSupplement);
+  const supplementById = new Map(supplements.map((s) => [s.id, s]));
+  for (const row of supplementLogRows) {
+    supplementById.get(row.supplement_id)?.takenDates.push(row.log_date);
+  }
+
   const exercises = exerciseRows.map(toExercise);
   const exerciseById = new Map(exercises.map((e) => [e.id, e]));
   for (const row of cargaRows) {
@@ -283,6 +320,7 @@ export async function loadAll(userId) {
     workoutId: workoutRow.id,
     tasks: taskRows.map(toTask),
     habits,
+    supplements,
     workout: {
       createdAt: workoutRow.started_on,
       photoName: workoutRow.photo_name,
@@ -358,6 +396,39 @@ export async function restartHabit(id, startDate) {
   unwrap(await supabase.from("habit_completions").delete().eq("habit_id", id));
   unwrap(await supabase.from("habits").update({ start_date: startDate }).eq("id", id));
 }
+
+// ---------- suplementos ----------
+
+export const insertSupplement = (userId, supplement, position) =>
+  supabase
+    .from("supplements")
+    .insert({
+      id: supplement.id,
+      user_id: userId,
+      position,
+      ...supplementColumns({ active: true, ...supplement }),
+    })
+    .then(unwrap);
+
+export const updateSupplement = (id, patch) =>
+  supabase.from("supplements").update(supplementColumns(patch)).eq("id", id).then(unwrap);
+
+export const removeSupplement = (id) =>
+  supabase.from("supplements").delete().eq("id", id).then(unwrap);
+
+export const insertSupplementLog = (userId, supplementId, date) =>
+  supabase
+    .from("supplement_logs")
+    .insert({ user_id: userId, supplement_id: supplementId, log_date: date })
+    .then(unwrap);
+
+export const removeSupplementLog = (supplementId, date) =>
+  supabase
+    .from("supplement_logs")
+    .delete()
+    .eq("supplement_id", supplementId)
+    .eq("log_date", date)
+    .then(unwrap);
 
 // ---------- treino ----------
 

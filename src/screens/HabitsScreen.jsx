@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, Trash2, RotateCcw, Flame, ChevronDown, Pencil, GripVertical } from "lucide-react";
+import { Check, Trash2, RotateCcw, Flame, ChevronDown, Pencil, GripVertical, Repeat, Pill } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -22,9 +22,47 @@ import AddButton from "../components/AddButton.jsx";
 import HabitCalendar from "../components/HabitCalendar.jsx";
 import HabitWeekStrip from "../components/HabitWeekStrip.jsx";
 import InsightsPanel from "../components/InsightsPanel.jsx";
+import SupplementsTab from "./SupplementsTab.jsx";
 import { todayISO, formatDatePtBr } from "../lib/date.js";
 import { habitProgress } from "../lib/habitProgress.js";
 import { buildHabitInsights } from "../lib/insights.js";
+
+const TAB_KEY = "meuritmo:habits-screen-tab";
+const TABS = [
+  { id: "habits", label: "Hábitos", icon: Repeat },
+  { id: "supplements", label: "Suplementos", icon: Pill },
+];
+const TAB_IDS = TABS.map((t) => t.id);
+
+function readSavedTab() {
+  try {
+    const saved = localStorage.getItem(TAB_KEY);
+    return TAB_IDS.includes(saved) ? saved : "habits";
+  } catch {
+    return "habits";
+  }
+}
+
+function SubTabs({ active, onChange }) {
+  return (
+    <div className="ritmo-inset mb-4 flex rounded-full p-0.5">
+      {TABS.map(({ id, label, icon: Icon }) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => onChange(id)}
+          aria-pressed={active === id}
+          className={`flex min-h-9 flex-1 items-center justify-center gap-1 rounded-full text-[11px] font-semibold transition-colors ${
+            active === id ? "ritmo-glass-pill text-ritmo-pink-deep" : "text-ritmo-muted"
+          }`}
+        >
+          <Icon size={14} />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function HabitFormSheet({ habit, onClose, onSave }) {
   const isEditing = !!habit;
@@ -293,7 +331,7 @@ function DateDropdown({ selectedDate, onSelectDate, habits }) {
   );
 }
 
-function HabitsScreen({
+function HabitsTab({
   habits,
   ai = [],
   aiStatus,
@@ -323,15 +361,10 @@ function HabitsScreen({
 
   return (
     <div>
-      <header className="mb-6 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ritmo-text">
-            Hábitos
-          </h1>
-          <p className="mt-1 text-sm text-ritmo-muted">
-            Diários ou com ciclo por período — do jeito que fizer sentido
-          </p>
-        </div>
+      <header className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-sm text-ritmo-muted">
+          Diários ou com ciclo por período — do jeito que fizer sentido
+        </p>
         <AddButton label="Novo" onClick={onAdd} />
       </header>
 
@@ -370,6 +403,65 @@ function HabitsScreen({
             </SortableContext>
           </DndContext>
         </>
+      )}
+    </div>
+  );
+}
+
+function HabitsScreen({
+  habits,
+  ai,
+  aiStatus,
+  onToggleDate,
+  onDelete,
+  onRestart,
+  onEdit,
+  onReorder,
+  onAdd,
+  supplements,
+  onToggleSupplementDate,
+  onDeleteSupplement,
+  onEditSupplement,
+  onAddSupplement,
+}) {
+  const [tab, setTab] = useState(readSavedTab);
+
+  function changeTab(next) {
+    setTab(next);
+    try {
+      localStorage.setItem(TAB_KEY, next);
+    } catch {
+      // Sem localStorage a aba só volta ao padrão na próxima abertura.
+    }
+  }
+
+  return (
+    <div>
+      <h1 className="mb-4 text-2xl font-semibold tracking-tight text-ritmo-text">Hábitos</h1>
+
+      <SubTabs active={tab} onChange={changeTab} />
+
+      {tab === "habits" && (
+        <HabitsTab
+          habits={habits}
+          ai={ai}
+          aiStatus={aiStatus}
+          onToggleDate={onToggleDate}
+          onDelete={onDelete}
+          onRestart={onRestart}
+          onEdit={onEdit}
+          onReorder={onReorder}
+          onAdd={onAdd}
+        />
+      )}
+      {tab === "supplements" && (
+        <SupplementsTab
+          supplements={supplements}
+          onToggleToday={onToggleSupplementDate}
+          onDelete={onDeleteSupplement}
+          onEdit={onEditSupplement}
+          onAdd={onAddSupplement}
+        />
       )}
     </div>
   );

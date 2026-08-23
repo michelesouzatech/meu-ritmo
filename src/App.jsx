@@ -16,6 +16,7 @@ import {
   RunSessionFormSheet,
 } from "./screens/runSheets.jsx";
 import { JournalEntryFormSheet } from "./screens/journalSheets.jsx";
+import { SupplementFormSheet } from "./screens/SupplementsTab.jsx";
 import ProfileScreen from "./screens/ProfileScreen.jsx";
 import LoginScreen from "./screens/LoginScreen.jsx";
 import ResetPasswordScreen from "./screens/ResetPasswordScreen.jsx";
@@ -59,6 +60,7 @@ function App() {
   const [workoutId, setWorkoutId] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [habits, setHabits] = useState([]);
+  const [supplements, setSupplements] = useState([]);
   const [workout, setWorkout] = useState(emptyWorkout);
   const [bodyFat, setBodyFat] = useState([]);
   const [runningData, setRunningData] = useState(null);
@@ -70,6 +72,8 @@ function App() {
   exercisesRef.current = workout.exercises;
   const habitsRef = useRef([]);
   habitsRef.current = habits;
+  const supplementsRef = useRef([]);
+  supplementsRef.current = supplements;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -126,6 +130,7 @@ function App() {
         setWorkoutId(data.workoutId);
         setTasks(data.tasks);
         setHabits(data.habits);
+        setSupplements(data.supplements);
         setWorkout(data.workout);
         setBodyFat(data.bodyFat);
         setRunningData(data.running);
@@ -269,6 +274,47 @@ function App() {
       prev.map((h) => (h.id === id ? { ...h, startDate, completions: [] } : h)),
     );
     save(() => db.restartHabit(id, startDate));
+  }
+
+  function addSupplement(data) {
+    const supplement = { id: crypto.randomUUID(), ...data };
+    const position = supplementsRef.current.length;
+    setSupplements((prev) => [...prev, supplement]);
+    save(() => db.insertSupplement(userId, supplement, position));
+  }
+
+  function editSupplement(id, data) {
+    setSupplements((prev) => prev.map((s) => (s.id === id ? { ...s, ...data } : s)));
+    save(() => db.updateSupplement(id, data));
+  }
+
+  function deleteSupplement(id) {
+    setSupplements((prev) => prev.filter((s) => s.id !== id));
+    save(() => db.removeSupplement(id));
+  }
+
+  function toggleSupplementDate(id, date) {
+    const current = supplements.find((s) => s.id === id);
+    if (!current) return;
+    const wasTaken = current.takenDates.includes(date);
+
+    setSupplements((prev) =>
+      prev.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              takenDates: wasTaken
+                ? s.takenDates.filter((d) => d !== date)
+                : [...s.takenDates, date],
+            }
+          : s,
+      ),
+    );
+    save(() =>
+      wasTaken
+        ? db.removeSupplementLog(id, date)
+        : db.insertSupplementLog(userId, id, date),
+    );
   }
 
   function addExercise(data) {
@@ -517,6 +563,11 @@ function App() {
             onEdit={(habit) => setSheet({ type: "editHabit", habit })}
             onReorder={reorderHabits}
             onAdd={() => setSheet("habit")}
+            supplements={supplements}
+            onToggleSupplementDate={toggleSupplementDate}
+            onDeleteSupplement={deleteSupplement}
+            onEditSupplement={(supplement) => setSheet({ type: "editSupplement", supplement })}
+            onAddSupplement={() => setSheet("supplement")}
           />
         )}
         {tab === "workout" && (
@@ -606,6 +657,16 @@ function App() {
           habit={sheet.habit}
           onClose={() => setSheet(null)}
           onSave={(data) => editHabit(sheet.habit.id, data)}
+        />
+      )}
+      {sheet === "supplement" && (
+        <SupplementFormSheet onClose={() => setSheet(null)} onSave={addSupplement} />
+      )}
+      {sheet?.type === "editSupplement" && (
+        <SupplementFormSheet
+          supplement={sheet.supplement}
+          onClose={() => setSheet(null)}
+          onSave={(data) => editSupplement(sheet.supplement.id, data)}
         />
       )}
       {sheet === "exercise" && (

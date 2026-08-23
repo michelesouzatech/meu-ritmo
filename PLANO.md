@@ -20,7 +20,7 @@
 |---|---|
 | Início (Hoje) | Vê um resumo do dia curto e priorizado (tarefa mais urgente, hábitos pendentes com nome encurtado, contagem regressiva da próxima prova de corrida, meta de corrida da semana, avisos da agenda de hoje/amanhã), o anel de progresso dos hábitos do dia, a agenda do Google e as tarefas pendentes |
 | Tarefas | Adiciona, edita, marca como feita, marca como urgente, exclui (arrastando o card), vê pendentes e concluídas separadas |
-| Hábitos | Cria hábito diário (sem prazo, com sequência de dias) ou com ciclo por período (escolhendo a data de início); edita, marca o progresso por um calendário/seletor de data, reordena a lista por arrastar e reinicia um novo ciclo quando termina |
+| Hábitos | Duas sub-abas. **Hábitos** — cria hábito diário (sem prazo, com sequência de dias) ou com ciclo por período (escolhendo a data de início); edita, marca o progresso por um calendário/seletor de data, reordena a lista por arrastar e reinicia um novo ciclo quando termina. **Suplementos** — cadastra cada suplemento (nome, horário em texto livre, dose opcional) e marca com um toque quando toma no dia, com sequência de dias seguidos |
 | Treino | Três sub-abas: **Força** — sobe o PDF do treino (lido e organizado automaticamente por ficha/grupo, com revisão antes de salvar) ou cadastra manualmente; cada ficha abre como **menu suspenso** e os exercícios dentro dela podem ser **reordenados por arrastar (drag-and-drop)**; registra carga por exercício com histórico e painel geral; cadastra % de gordura mês a mês. **Corrida** — cadastra provas (data, local, distância, categoria, pace meta e, depois, tempo oficial e colocação), mantém um plano de treino com meta semanal e acompanha a consistência do mês. **Diário** — registra num calendário do mês o que treinou em cada dia (um registro por treino) e como se sentiu, em cinco carinhas |
 | Perfil | Foto (upload), nome, estatísticas rápidas, sair da conta — e embute os **Insights** logo abaixo |
 | Insights | Aparecem em **dois formatos**. Em cada aba, um painel compacto com o recorte só daquela área (hábitos em Hábitos, carga em Força, pace em Corrida, sensação em Diário, tarefas em Tarefas), sempre com um insight à vista e o resto atrás de "ver mais". No Perfil, um **parágrafo único** costurando as áreas — é lá que moram os cruzamentos que nenhuma aba enxerga sozinha |
@@ -42,6 +42,7 @@ O segundo princípio é o limiar: cada regra pede o **menor histórico que ainda
 ```
 Tarefa: título, data, status (pendente/feita), observação
 Hábito: nome, meta, período (data início, data fim ou nº de dias), progresso diário (feito/não feito por dia)
+Suplemento: nome, horário (texto livre, ex: "depois do almoço"), dose (opcional), dias em que foi tomado
 Treino: nome do exercício, grupo/dia, séries x reps, carga usada (histórico por data), data de cadastro (pra avisar troca a cada 3 meses)
 Medição corporal: data, % de gordura
 Prova: nome, data, horário, local, distância, categoria inscrita, pace meta,
@@ -115,6 +116,9 @@ Cinco melhorias definidas depois do MVP no ar, feitas uma por vez. A ordem foi t
   - **A trava passou de "uma por sessão" pra "uma por momento"**, com o dia junto na marca: sem o dia, o app aberto a noite inteira atravessaria a meia-noite achando que já tinha feito a leitura da manhã seguinte. O cache do navegador guarda só a leitura corrente — assim que a tarde chega, a da manhã não tem mais pra onde voltar na tela.
   - **A cota triplicou por dia.** Era o preço da mudança e foi aceito de olho aberto; quando estourar, o 429 já tem tratamento próprio e as telas continuam de pé no motor de regras.
 - [ ] **5. Notificações na tela do app** — Central de avisos dentro do app, montada a partir dos dados que já existem (tarefa urgente, hábito pendente, treino com 3 meses, prova chegando, faz N dias que não corre). Notificação push de verdade, com o app fechado, continua na [Versão 2](#7-versão-2-fica-pra-depois) — precisa de servidor.
+- [x] **Registro de suplementos** — Pedido direto: *"vivo esquecendo de tomar meus suplementos"*. Virou uma segunda sub-aba dentro de Hábitos, não um hábito comum, porque cada suplemento tem seu próprio horário e a Michele toma vários em momentos diferentes do dia (B12 depois do café, C depois do almoço, D depois da janta) — um hábito só marca uma vez por dia e perderia isso. Cada suplemento tem nome, horário em texto livre (porque o horário dela é relativo à refeição, não hora fixa) e dose opcional; a lista mostra um botão pra marcar "tomei hoje" e a sequência de dias seguidos, no mesmo modelo de streak dos hábitos.
+  - Feito no Supabase: 2 tabelas novas (`supplements`, `supplement_logs`) com RLS igual às demais.
+  - Ainda não entra nos Insights nem tem lembrete de verdade (notificação) — combinado que o lembrete fica pra depois, quando existir a central de avisos do item 5.
 
 ## 7. Versão 2 (fica pra depois)
 
