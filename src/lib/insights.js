@@ -44,28 +44,10 @@ import { noteExplanation, themesInRange } from "./journalNotes.js";
 import { habitProgress } from "./habitProgress.js";
 import { fichaStatus, trainingDays } from "./trainingDays.js";
 
-export const AREA_LABEL = {
-  habits: "Hábitos",
-  gym: "Força",
-  running: "Corrida",
-  journal: "Diário",
-  tasks: "Tarefas",
-  agenda: "Agenda",
-  cross: "Visão geral",
-};
-
 const TONE_ORDER = { up: 0, down: 1, tip: 2 };
 
 export function sortInsights(items) {
   return [...items].sort((a, b) => TONE_ORDER[a.tone] - TONE_ORDER[b.tone]);
-}
-
-export function groupInsights(items) {
-  return {
-    evolutions: items.filter((i) => i.tone === "up"),
-    improvements: items.filter((i) => i.tone === "down"),
-    suggestions: items.filter((i) => i.tone === "tip"),
-  };
 }
 
 // `covers` marca quais áreas esse insight já explica. O parágrafo do Perfil
@@ -1450,8 +1432,6 @@ export function buildInsights({
     tasks: buildTaskInsights(tasks, today),
   };
 
-  const all = AREA_ORDER.flatMap((a) => areas[a] ?? []);
-
   const hasAnyData =
     tasks.length > 0 ||
     habits.length > 0 ||
@@ -1467,7 +1447,6 @@ export function buildInsights({
     taskSummary,
     areas,
     paragraph: buildProfileParagraph(areas, { taskSummary }),
-    ...groupInsights(all),
     hasAnyData,
   };
 }

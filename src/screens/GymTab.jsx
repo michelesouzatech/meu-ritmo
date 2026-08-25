@@ -575,8 +575,6 @@ function GymTab({
   workout,
   bodyFat,
   journal = [],
-  ai = [],
-  aiStatus,
   onAddExercise,
   onUpdateExercise,
   onDeleteExercise,
@@ -675,7 +673,7 @@ function GymTab({
         </div>
       )}
 
-      <InsightsPanel items={insights} ai={ai} aiStatus={aiStatus} className="mb-4" />
+      <InsightsPanel items={insights} className="mb-4" />
 
       <div className="ritmo-card mb-4 rounded-2xl p-4">
         <div className="flex items-center justify-between gap-3">

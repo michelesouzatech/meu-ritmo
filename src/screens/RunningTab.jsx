@@ -401,8 +401,6 @@ function RunningTab({
   plan,
   sessions,
   calendarReady,
-  ai = [],
-  aiStatus,
   onAddRace,
   onEditRace,
   onDeleteRace,
@@ -519,7 +517,7 @@ function RunningTab({
         </div>
       )}
 
-      <InsightsPanel items={insights} ai={ai} aiStatus={aiStatus} className="mb-4" />
+      <InsightsPanel items={insights} className="mb-4" />
 
       {recentSessions.length > 0 && (
         <Collapsible title="Últimas corridas" count={sessions.length} defaultOpen>

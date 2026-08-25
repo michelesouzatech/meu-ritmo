@@ -18,16 +18,6 @@ import { supabase } from "./supabase.js";
 
 const CACHE_PREFIX = "meuritmo:aiInsights:";
 
-// Os nomes que a função devolve, traduzidos pras chaves que o resto do app já
-// usa (as mesmas de lib/insights.js). Se mudar aqui, mude o AREAS da função.
-export const AREA_KEY = {
-  habitos: "habits",
-  forca: "gym",
-  corrida: "running",
-  diario: "journal",
-  tarefas: "tasks",
-};
-
 // Pra onde cada destino leva. A aba Treino tem três sub-abas, então o destino
 // carrega as duas informações — sem a sub-aba, um clique em "corrida" cairia
 // em Força e pareceria botão quebrado.
@@ -37,7 +27,8 @@ export const DESTINO_ROTA = {
   corrida: { tab: "workout", sub: "running" },
   diario: { tab: "workout", sub: "journal" },
   tarefas: { tab: "tasks" },
-  agenda: { tab: "home" },
+  // A agenda mora no Perfil agora, não mais na Home.
+  agenda: { tab: "profile" },
 };
 
 export const DESTINO_LABEL = {
@@ -48,19 +39,6 @@ export const DESTINO_LABEL = {
   tarefas: "Tarefas",
   agenda: "Agenda",
 };
-
-// Agrupa a lista plana que veio da função nas chaves por área que os painéis
-// esperam. Área sem nada devolve lista vazia, que é o que o InsightsPanel já
-// sabe tratar.
-export function byArea(areas = []) {
-  const out = { habits: [], gym: [], running: [], journal: [], tasks: [] };
-  areas.forEach((item, i) => {
-    const key = AREA_KEY[item.area];
-    if (!key) return;
-    out[key].push({ id: `ai-${item.area}-${i}`, tone: item.tom, text: item.texto, ai: true });
-  });
-  return out;
-}
 
 // O cache leva o id da pessoa junto: duas contas no mesmo navegador não podem
 // ver a leitura uma da outra.

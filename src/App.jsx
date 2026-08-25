@@ -532,20 +532,12 @@ function App() {
             calendar={calendar}
             running={running}
             onToggleTask={toggleTask}
-            onConnectCalendar={connectGoogleCalendar}
-            onRefreshCalendar={calendar.refresh}
-            onOpenEvent={(event) => setSheet({ type: "event", event })}
-            onNewEvent={(dateISO, startTime) =>
-              setSheet({ type: "event", event: null, dateISO, startTime })
-            }
             onNavigate={navigate}
           />
         )}
         {tab === "tasks" && (
           <TasksScreen
             tasks={tasks}
-            ai={ai.areas.tasks}
-            aiStatus={ai.status}
             onToggle={toggleTask}
             onDelete={deleteTask}
             onEdit={(task) => setSheet({ type: "editTask", task })}
@@ -555,8 +547,6 @@ function App() {
         {tab === "habits" && (
           <HabitsScreen
             habits={habits}
-            ai={ai.areas.habits}
-            aiStatus={ai.status}
             onToggleDate={toggleHabitDate}
             onDelete={deleteHabit}
             onRestart={restartHabit}
@@ -577,8 +567,6 @@ function App() {
               workout,
               bodyFat,
               journal: journal.entries,
-              ai: ai.areas.gym,
-              aiStatus: ai.status,
               onAddExercise: () => setSheet("exercise"),
               onUpdateExercise: updateExercise,
               onDeleteExercise: deleteExercise,
@@ -595,8 +583,6 @@ function App() {
               plan: running.plan,
               sessions: running.sessions,
               calendarReady: calendar.status === "ready",
-              ai: ai.areas.running,
-              aiStatus: ai.status,
               onAddRace: () => setSheet({ type: "race", race: null }),
               onEditRace: (race) => setSheet({ type: "race", race }),
               onDeleteRace: running.deleteRace,
@@ -611,10 +597,6 @@ function App() {
             }}
             journal={{
               entries: journal.entries,
-              workout,
-              sessions: running.sessions,
-              ai: ai.areas.journal,
-              aiStatus: ai.status,
               selectedDate: journalDate,
               onSelectDate: setJournalDate,
               onAdd: (dateISO) =>
@@ -631,6 +613,14 @@ function App() {
             habits={habits}
             regras={ai.regras}
             ai={ai}
+            calendar={calendar}
+            onToggleTask={toggleTask}
+            onConnectCalendar={connectGoogleCalendar}
+            onRefreshCalendar={calendar.refresh}
+            onOpenEvent={(event) => setSheet({ type: "event", event })}
+            onNewEvent={(dateISO, startTime) =>
+              setSheet({ type: "event", event: null, dateISO, startTime })
+            }
             onLogout={handleLogout}
             onNavigate={navigate}
           />

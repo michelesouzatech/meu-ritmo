@@ -30,28 +30,12 @@ const corsHeaders = {
 }
 
 // As áreas que têm painel próprio numa aba do app. Precisa bater com o mapa
-// AREA_KEY em src/lib/aiInsights.js.
+// DESTINO_ROTA em src/lib/aiInsights.js.
 const AREAS = ['habitos', 'forca', 'corrida', 'diario', 'tarefas']
 
 // Pra onde uma ação sugerida pode levar. É AREAS mais a agenda, que aparece na
 // Home e não tem painel de insight próprio.
 const DESTINOS = [...AREAS, 'agenda']
-
-// Os mesmos três tons que o painel já sabe desenhar (up = seta pra cima,
-// down = seta pra baixo, tip = lâmpada). Inventar um quarto aqui deixaria a
-// linha sem ícone na tela.
-const TONS = ['up', 'down', 'tip']
-
-// As chaves de `regras` vêm de lib/insights.js, em inglês; a resposta traz as
-// áreas em português. "cross" entra em todas: é a leitura que cruza áreas, e é
-// justamente a que a camada escrita tende a repetir com outras palavras.
-const REGRAS_DA_AREA: Record<string, string[]> = {
-  habitos: ['habits', 'cross'],
-  forca: ['gym', 'cross'],
-  corrida: ['running', 'cross'],
-  diario: ['journal', 'cross'],
-  tarefas: ['tasks', 'cross'],
-}
 
 const semAcento = (texto: string) =>
   texto.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
@@ -68,8 +52,8 @@ const weekdayOf = (iso: string) => WEEKDAY[new Date(`${iso}T00:00:00`).getDay()]
 // 17 de agosto" no dia 20, com treino no diário do dia 18 (ver comentário em
 // src/lib/aiSummary.js). "cargas" fica bem perto da frase no resumo e puxa o
 // modelo pro dia errado. Isto é a rede embaixo, no mesmo espírito de
-// `ecoDeRegra` — não confia que a instrução sozinha basta, confere o fato
-// depois que o texto já saiu.
+// não confia que a instrução sozinha basta, confere o fato depois que o
+// texto já saiu.
 const SEM_FEIRA = new Set(['domingo', 'sábado'])
 const rotuloDoDia = (dia: string, comFeira: boolean) =>
   comFeira && !SEM_FEIRA.has(dia) ? `${dia}-feira` : dia
@@ -152,79 +136,6 @@ function corrigirDiaDeTreino(texto: string, ultimoTreinoISO: string | null): str
   })
 }
 
-const numerosDe = (texto: string) => new Set(texto.match(/\d+(?:[.,]\d+)?/g) ?? [])
-
-// "8 dias" é um fato; "8" sozinho é um algarismo. Guardar o número colado na
-// palavra que vem depois é o que separa "8 dias sem treinar" de "8 hábitos".
-const medidasDe = (texto: string) =>
-  new Set(
-    [...semAcento(texto).matchAll(/(\d+(?:[.,]\d+)?)\s+(\p{L}+)/gu)].map((m) => `${m[1]} ${m[2]}`),
-  )
-
-// Conectivo longo o bastante pra passar no filtro de tamanho e vazio o
-// bastante pra não dizer nada sobre o assunto da frase.
-const VAZIAS = new Set([
-  'quando', 'porque', 'tambem', 'ainda', 'entre', 'depois', 'antes', 'sobre',
-  'dessa', 'desse', 'desta', 'deste', 'nesse', 'nessa', 'pelos', 'pelas',
-  'todos', 'todas', 'muito', 'menos', 'mesmo', 'mesma', 'onde', 'como', 'seus',
-  'suas', 'esses', 'essas', 'estes', 'estas', 'aquilo', 'enquanto',
-])
-
-const palavrasDe = (texto: string) =>
-  new Set((semAcento(texto).match(/\p{L}{5,}/gu) ?? []).filter((p) => !VAZIAS.has(p)))
-
-// O começo do que a regra põe entre aspas: "Treino B – Foco em Quadríceps e
-// Pernas" vira "treino b". A leitura escrita encurta o nome quase sempre, então
-// comparar o nome inteiro nunca bateria.
-function nomesCitados(regra: string) {
-  return [...regra.matchAll(/"([^"]+)"/g)]
-    .map((m) => semAcento(m[1]).split(/\s+/).slice(0, 2).join(' ').trim())
-    .filter((nome) => nome.length >= 4)
-}
-
-// A leitura escrita é uma camada POR CIMA das regras, não no lugar delas — e as
-// duas dividem o mesmo card, com a dela em cima. Quando ela reescreve o que a
-// regra já diz, o card gasta duas linhas pra contar uma coisa só: foi o que
-// aconteceu no painel de Força, onde a linha da IA e a regra logo abaixo
-// contavam a mesma história do Treino B parado há 8 dias.
-//
-// O prompt já pede pra não repetir. Isto é a rede embaixo, e é deliberadamente
-// conservadora: só derruba quando a frase divide com UMA MESMA regra um número
-// específico E uma coisa que aquela regra nomeou. Bater nos dois é dizer a
-// mesma coisa; bater num só é falar do mesmo assunto, o que é permitido — errar
-// pro lado de deixar passar custa uma linha repetida, errar pro outro lado
-// engole uma leitura que só ela tinha.
-function ecoDeRegra(texto: string, regras: string[]) {
-  const numeros = numerosDe(texto)
-  // Frase sem número nenhum não dá pra acusar de repetir uma conta.
-  if (numeros.size === 0) return false
-
-  const alvo = semAcento(texto)
-  const medidas = medidasDe(texto)
-  const palavras = palavrasDe(texto)
-
-  return regras.some((regra) => {
-    const numerosIguais = [...numerosDe(regra)].filter((n) => numeros.has(n))
-    if (numerosIguais.length === 0) return false
-
-    const palavrasRegra = palavrasDe(regra)
-    const comuns = [...palavras].filter((p) => palavrasRegra.has(p)).length
-
-    // Quatro sinais independentes de que é a mesma afirmação. UM SÓ NÃO BASTA:
-    // "Treino A" citado de passagem numa leitura sobre corrida divide o nome
-    // com a regra da ficha e não está dizendo a mesma coisa. Dois sinais já é
-    // difícil de ser coincidência.
-    const sinais = [
-      nomesCitados(regra).some((nome) => alvo.includes(nome)),
-      [...medidasDe(regra)].some((m) => medidas.has(m)),
-      numerosIguais.length >= 2,
-      palavras.size > 0 && comuns / palavras.size >= 0.6,
-    ].filter(Boolean).length
-
-    return sinais >= 2
-  })
-}
-
 // Forçar JSON com schema evita o passo frágil de tentar extrair texto de uma
 // resposta em prosa livre — o modelo devolve exatamente esses campos ou a
 // requisição falha, e a tela nunca recebe algo meio montado.
@@ -256,20 +167,8 @@ const responseSchema = {
       },
       required: ['titulo', 'paragrafos', 'acoes'],
     },
-    areas: {
-      type: 'ARRAY',
-      items: {
-        type: 'OBJECT',
-        properties: {
-          area: { type: 'STRING', enum: AREAS },
-          tom: { type: 'STRING', enum: TONS },
-          texto: { type: 'STRING' },
-        },
-        required: ['area', 'tom', 'texto'],
-      },
-    },
   },
-  required: ['perfil', 'areas'],
+  required: ['perfil'],
 }
 
 // A assinatura do token já foi conferida pelo gateway antes de chegar aqui, e
@@ -436,10 +335,10 @@ COMO LER O RESUMO
   "fatos.ultimoTreino" (ou "forca.diasComTreinoDeForca") como fonte da data —
   nunca a data mais recente dentro de "cargas". Exemplo: se a última carga é
   de segunda e "fatos.ultimoTreino" diz quarta, a frase fala de quarta.
-- "regras" é o que o próprio app já calculou e JÁ ESTÁ ESCRITO NA TELA, num
-  painel logo abaixo do seu texto. Ela só traz o que teve o que dizer: regra
-  que ficou calada não aparece aí, e ficar calada quase sempre quer dizer que
-  estava tudo certo — nunca leia a ausência de uma regra como problema.
+- "regras" é o que o próprio app já calculou e JÁ ESTÁ ESCRITO NA TELA, no
+  painel de cada aba. Ela só traz o que teve o que dizer: regra que ficou
+  calada não aparece aí, e ficar calada quase sempre quer dizer que estava
+  tudo certo — nunca leia a ausência de uma regra como problema.
 - "fatos" é a conta de cobertura dos últimos 14 dias, fechada pelo app e
   mandada sempre: quantos dias ela treinou, quantos viraram registro no diário,
   em quantos ela escreveu texto, quais dias ficaram sem registro. Ver SOBRE
@@ -493,9 +392,8 @@ SOBRE O QUE VOCÊ NÃO SABE
   em que ela não escreveu nada.
 
 O QUE ESCREVER
-- Não repita "regras" com outras palavras. Aquilo a pessoa já está lendo. Se a
-  única coisa que você tem a dizer sobre uma área é o que a regra já disse,
-  não escreva nada sobre essa área — a lista "areas" pode vir sem ela.
+- Não repita "regras" com outras palavras. Aquilo a pessoa já está lendo nas
+  próprias abas de cada área.
 - Seu trabalho é o que nenhuma regra fez: cruzar áreas que o app mostra
   separadas. O dia da semana em que a corrida acontece e o dia em que os
   hábitos caem. A carga que parou de subir e o diário marcando "cansada". A
@@ -524,7 +422,7 @@ SOBRE O TOM
   julgamento moral, sem "você deveria", sem paternalismo, sem alarmismo.
 - Ela registra a vida dela nesse app há pouco tempo. Elogie o que está de pé
   antes de apontar o que caiu.
-- Nada de emoji dentro de título, parágrafo ou texto de área.
+- Nada de emoji dentro de título ou parágrafo.
 
 FORMATO
 - "perfil.titulo": uma frase de no máximo 90 caracteres com a leitura
@@ -543,14 +441,7 @@ FORMATO
     plano"). Só descreva em palavras quando não houver base numérica.
   - "destino": onde ela resolve isso, exatamente um destes — "habitos",
     "forca" (exercícios e carga da academia), "corrida" (provas, plano e
-    corridas), "diario" (como o treino foi), "tarefas", "agenda".
-- "areas": no máximo 2 itens por área, e é para vir vazia quando não houver o
-  que acrescentar. Cada item tem:
-  - "area": uma de "habitos", "forca", "corrida", "diario", "tarefas".
-  - "tom": "up" pro que está evoluindo, "down" pro que precisa de atenção,
-    "tip" pra sugestão.
-  - "texto": 1 ou 2 frases, no máximo 40 palavras. Escreva como quem fala com
-    ela, não como legenda de gráfico.`
+    corridas), "diario" (como o treino foi), "tarefas", "agenda".`
 }
 
 Deno.serve(async (req) => {
@@ -738,35 +629,15 @@ Deno.serve(async (req) => {
   try {
     const parsed = JSON.parse(text)
 
-    // O enum do schema já restringe destino, área e tom, mas a tela navega com
-    // o destino e escolhe ícone pelo tom — conferir aqui custa três linhas e
-    // garante que nada fora da lista chegue no front.
+    // O enum do schema já restringe destino, mas a tela navega com ele —
+    // conferir aqui custa uma linha e garante que nada fora da lista chegue
+    // no front.
     const acoes = (parsed.perfil?.acoes ?? [])
       .filter((acao: { destino?: string }) => DESTINOS.includes(acao.destino ?? ''))
       .slice(0, 3)
 
-    const regras = (summary as { regras?: Record<string, string[]> }).regras ?? {}
-
     const ultimoTreinoISO =
       (summary as { fatos?: { ultimoTreino?: string | null } }).fatos?.ultimoTreino ?? null
-
-    const areas = (parsed.areas ?? [])
-      .filter(
-        (item: { area?: string; tom?: string; texto?: string }) =>
-          AREAS.includes(item.area ?? '') && TONS.includes(item.tom ?? '') && !!item.texto,
-      )
-      .map((item: { area: string; tom: string; texto: string }) => ({
-        ...item,
-        texto: corrigirDiaDeTreino(item.texto, ultimoTreinoISO),
-      }))
-      .filter((item: { area: string; texto: string }) => {
-        const daArea = (REGRAS_DA_AREA[item.area] ?? []).flatMap((chave) => regras[chave] ?? [])
-        if (!ecoDeRegra(item.texto, daArea)) return true
-        // Vai pro log da função, não pra tela: se o filtro começar a comer
-        // leitura boa, é aqui que dá pra ver o que ele derrubou.
-        console.log('área descartada por repetir uma regra:', item.area, '|', item.texto)
-        return false
-      })
 
     const analise = {
       perfil: {
@@ -776,7 +647,6 @@ Deno.serve(async (req) => {
         ),
         acoes,
       },
-      areas,
       modelo: GEMINI_MODEL,
       geradoEm: new Date().toISOString(),
     }

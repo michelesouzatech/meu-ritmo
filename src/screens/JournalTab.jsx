@@ -1,10 +1,7 @@
-import { useMemo } from "react";
 import { Plus, NotebookPen } from "lucide-react";
 import AddButton from "../components/AddButton.jsx";
 import SwipeToDelete from "../components/SwipeToDelete.jsx";
 import JournalCalendar from "../components/JournalCalendar.jsx";
-import InsightsPanel from "../components/InsightsPanel.jsx";
-import { buildJournalInsights } from "../lib/insights.js";
 import { todayISO } from "../lib/date.js";
 import {
   activityName,
@@ -52,10 +49,6 @@ function EntryRow({ entry, onEdit, onDelete }) {
 
 function JournalTab({
   entries,
-  workout,
-  sessions,
-  ai = [],
-  aiStatus,
   selectedDate,
   onSelectDate,
   onAdd,
@@ -68,13 +61,6 @@ function JournalTab({
 
   const monthAverage = averageFeeling(
     entries.filter((e) => e.date.slice(0, 7) === selectedDate.slice(0, 7)),
-  );
-
-  // O diário cruza com o treino e as corridas — os três vivem na mesma tela,
-  // então "treinei e não registrei" continua sendo assunto daqui.
-  const insights = useMemo(
-    () => buildJournalInsights(entries, { workout, sessions }),
-    [entries, workout, sessions],
   );
 
   return (
@@ -100,8 +86,6 @@ function JournalTab({
           onSelectDate={onSelectDate}
         />
       </section>
-
-      <InsightsPanel items={insights} ai={ai} aiStatus={aiStatus} className="mb-4" />
 
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <h2 className="text-base font-semibold text-ritmo-text">

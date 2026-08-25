@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildInsights } from "../lib/insights.js";
 import { buildAiSummary, hasEnoughDataForAi } from "../lib/aiSummary.js";
-import { byArea, fetchAiInsights } from "../lib/aiInsights.js";
+import { fetchAiInsights } from "../lib/aiInsights.js";
 import { marcaDoMomento, momentoAtual, msAteProximoMomento } from "../lib/momento.js";
-
-const VAZIO = { habits: [], gym: [], running: [], journal: [], tasks: [] };
 
 // Em que momento do dia o app está agora — e quando ele virar, avisa.
 //
@@ -120,11 +118,6 @@ export function useAiInsights({ userId, ready, data }) {
   // uma nova tentativa sempre alcança a função de verdade.
   const retry = useCallback(() => gerar(summary), [gerar, summary]);
 
-  const areas = useMemo(
-    () => (state.analise ? byArea(state.analise.areas) : VAZIO),
-    [state.analise],
-  );
-
   return {
     regras,
     status: state.status,
@@ -132,7 +125,6 @@ export function useAiInsights({ userId, ready, data }) {
     perfil: state.analise?.perfil ?? null,
     geradoEm: state.analise?.geradoEm ?? null,
     momento: state.momento,
-    areas,
     retry,
   };
 }

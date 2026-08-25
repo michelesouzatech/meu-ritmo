@@ -293,8 +293,6 @@ function SortableHabitItem({ habit, date, onToggleDate, onDelete, onRestart, onE
 
 function HabitsTab({
   habits,
-  ai = [],
-  aiStatus,
   onToggleDate,
   onDelete,
   onRestart,
@@ -344,7 +342,7 @@ function HabitsTab({
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
           />
-          <InsightsPanel items={insights} ai={ai} aiStatus={aiStatus} className="mb-4" />
+          <InsightsPanel items={insights} className="mb-4" />
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={habits.map((h) => h.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-3">
@@ -370,8 +368,6 @@ function HabitsTab({
 
 function HabitsScreen({
   habits,
-  ai,
-  aiStatus,
   onToggleDate,
   onDelete,
   onRestart,
@@ -404,8 +400,6 @@ function HabitsScreen({
       {tab === "habits" && (
         <HabitsTab
           habits={habits}
-          ai={ai}
-          aiStatus={aiStatus}
           onToggleDate={onToggleDate}
           onDelete={onDelete}
           onRestart={onRestart}

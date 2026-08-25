@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 import { ArrowLeft, Camera, LogOut } from "lucide-react";
 import CatMascot from "../components/CatMascot.jsx";
+import AgendaCard from "../components/AgendaCard.jsx";
 import InsightsScreen from "./InsightsScreen.jsx";
+import { todayISO } from "../lib/date.js";
 import { supabase } from "../lib/supabase.js";
 
 function displayName(user) {
@@ -17,12 +19,27 @@ function StatCard({ label, value }) {
   );
 }
 
-function ProfileScreen({ user, tasks, habits, regras, ai, onLogout, onNavigate }) {
+function ProfileScreen({
+  user,
+  tasks,
+  habits,
+  regras,
+  ai,
+  calendar,
+  onToggleTask,
+  onConnectCalendar,
+  onRefreshCalendar,
+  onOpenEvent,
+  onNewEvent,
+  onLogout,
+  onNavigate,
+}) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const doneTasks = tasks.filter((t) => t.done).length;
   const activeHabits = habits.length;
+  const today = todayISO();
 
   async function handlePhotoChange(e) {
     const file = e.target.files?.[0];
@@ -107,6 +124,20 @@ function ProfileScreen({ user, tasks, habits, regras, ai, onLogout, onNavigate }
         <StatCard label="tarefas concluídas" value={doneTasks} />
         <StatCard label="hábitos ativos" value={activeHabits} />
       </div>
+
+      <AgendaCard
+        status={calendar.status}
+        events={calendar.events}
+        tasks={tasks}
+        focusDate={calendar.focusDate}
+        today={today}
+        onFocusDate={calendar.setFocusDate}
+        onConnect={onConnectCalendar}
+        onRefresh={onRefreshCalendar}
+        onOpenEvent={onOpenEvent}
+        onNewEvent={onNewEvent}
+        onToggleTask={onToggleTask}
+      />
 
       <button
         type="button"

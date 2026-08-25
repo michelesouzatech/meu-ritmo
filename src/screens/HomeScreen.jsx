@@ -1,6 +1,5 @@
 import { AlertTriangle, Bell, Check } from "lucide-react";
 import DayHabitsRing from "../components/DayHabitsRing.jsx";
-import AgendaCard from "../components/AgendaCard.jsx";
 import { todayISO, daysBetween, addDays } from "../lib/date.js";
 import { eventsOnDay } from "../lib/googleCalendar.js";
 import { habitProgress } from "../lib/habitProgress.js";
@@ -205,10 +204,6 @@ function HomeScreen({
   calendar,
   running,
   onToggleTask,
-  onConnectCalendar,
-  onRefreshCalendar,
-  onOpenEvent,
-  onNewEvent,
   onNavigate,
 }) {
   const today = todayISO();
@@ -284,20 +279,6 @@ function HomeScreen({
           </p>
         ))}
       </section>
-
-      <AgendaCard
-        status={calendar.status}
-        events={calendar.events}
-        tasks={tasks}
-        focusDate={calendar.focusDate}
-        today={today}
-        onFocusDate={calendar.setFocusDate}
-        onConnect={onConnectCalendar}
-        onRefresh={onRefreshCalendar}
-        onOpenEvent={onOpenEvent}
-        onNewEvent={onNewEvent}
-        onToggleTask={onToggleTask}
-      />
 
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold text-ritmo-text">Tarefas</h2>
