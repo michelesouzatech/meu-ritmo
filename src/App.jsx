@@ -37,6 +37,9 @@ import * as db from "./lib/db.js";
 const emptyWorkout = { createdAt: null, photoName: null, photoDataUrl: null, exercises: [] };
 const LOCAL_PREFIX = "meuritmo:";
 const SEED_FLAG_KEY = "meuritmo:seeded-workout-v1";
+// Mesmo limiar do useGoogleCalendar.js: não busca de novo se os dados têm
+// menos de 5 minutos, pra não recarregar tudo a cada troca rápida de aba.
+const STALE_MS = 5 * 60 * 1000;
 
 // Lê o que tinha ficado salvo no navegador, na época antes do banco de dados.
 function readLocal(key, fallback) {
@@ -74,6 +77,10 @@ function App() {
   habitsRef.current = habits;
   const supplementsRef = useRef([]);
   supplementsRef.current = supplements;
+
+  // Marca quando os dados vieram do banco pela última vez — usado pra decidir
+  // se vale buscar de novo quando o app volta pra frente (ver efeito abaixo).
+  const fetchedAtRef = useRef(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -136,6 +143,7 @@ function App() {
         setRunningData(data.running);
         setJournalData(data.journal);
         setLoadError(false);
+        fetchedAtRef.current = Date.now();
       } catch {
         if (!cancelled) setLoadError(true);
       } finally {
@@ -157,6 +165,44 @@ function App() {
   const running = useRunning({ userId, save, initial: runningData });
   const journal = useJournal({ userId, save, initial: journalData });
 
+  // Voltou pro app depois de um tempo: busca os dados de novo, do mesmo jeito
+  // que a Google Agenda já faz (useGoogleCalendar.js). Sem isso, quem registra
+  // algo no celular e volta pro computador com a aba antiga aberta (ou o
+  // contrário) via o app parado no que tinha na hora do login — os insights
+  // pareciam "não atualizar" porque o motor de regras estava correto, só que
+  // trabalhando em cima de um state que nunca era atualizado de novo.
+  //
+  // Só busca se não há gravação pendente: senão o retorno do banco pode
+  // chegar antes da escrita otimista ter sido confirmada e apagar da tela o
+  // que a pessoa acabou de marcar.
+  useEffect(() => {
+    if (!userId) return;
+    async function refreshFromCloud() {
+      try {
+        const data = await db.loadAll(userId);
+        setTasks(data.tasks);
+        setHabits(data.habits);
+        setSupplements(data.supplements);
+        setWorkout(data.workout);
+        setBodyFat(data.bodyFat);
+        setRunningData(data.running);
+        setJournalData(data.journal);
+        fetchedAtRef.current = Date.now();
+      } catch {
+        // Sem sorte agora: os dados na tela continuam sendo os últimos bons,
+        // e a próxima vez que o app voltar pra frente tenta de novo.
+      }
+    }
+    function onVisible() {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - fetchedAtRef.current < STALE_MS) return;
+      if (pendingSaves > 0) return;
+      refreshFromCloud();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [userId, pendingSaves]);
+
   // Os insights são calculados uma vez aqui em cima e distribuídos pras abas,
   // não recalculados em cada tela. As áreas se cruzam — o dia de treino
   // explica o hábito que caiu, a agenda cheia explica a tarefa encalhada — e
@@ -165,6 +211,7 @@ function App() {
     () => ({
       tasks,
       habits,
+      supplements,
       workout,
       bodyFat,
       running: { races: running.races, plan: running.plan, sessions: running.sessions },
@@ -175,6 +222,7 @@ function App() {
     [
       tasks,
       habits,
+      supplements,
       workout,
       bodyFat,
       running.races,

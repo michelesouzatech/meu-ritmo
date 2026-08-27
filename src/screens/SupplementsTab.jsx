@@ -4,7 +4,9 @@ import Sheet from "../components/Sheet.jsx";
 import AddButton from "../components/AddButton.jsx";
 import HabitWeekStrip from "../components/HabitWeekStrip.jsx";
 import DateDropdown from "../components/DateDropdown.jsx";
+import InsightsPanel from "../components/InsightsPanel.jsx";
 import { todayISO, formatDatePtBr } from "../lib/date.js";
+import { buildSupplementInsights } from "../lib/insights.js";
 
 export function SupplementFormSheet({ supplement, onClose, onSave }) {
   const isEditing = !!supplement;
@@ -159,6 +161,7 @@ function SupplementsTab({ supplements, onToggleDate, onDelete, onEdit, onAdd }) 
     () => supplements.map((s) => ({ id: s.id, name: s.name, completions: s.takenDates })),
     [supplements],
   );
+  const insights = useMemo(() => buildSupplementInsights(supplements), [supplements]);
 
   return (
     <div>
@@ -184,6 +187,7 @@ function SupplementsTab({ supplements, onToggleDate, onDelete, onEdit, onAdd }) 
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
           />
+          <InsightsPanel items={insights} className="mb-4" />
           <div className="space-y-3">
             {supplements.map((supplement) => (
               <SupplementCard

@@ -35,6 +35,7 @@ const toSupplement = (r) => ({
   scheduleLabel: r.schedule_label ?? "",
   dose: r.dose ?? "",
   active: r.active,
+  createdAt: r.created_at,
   takenDates: [],
 });
 

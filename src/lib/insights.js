@@ -258,6 +258,107 @@ export function buildHabitInsights(habits, today = todayISO()) {
   return sortInsights(items);
 }
 
+/* ------------------------------ suplementos ------------------------------ */
+
+// Mesma lógica da janela de hábitos: começa no primeiro registro de fato, não
+// na data em que o suplemento foi cadastrado.
+function supplementWindow(supplements, today) {
+  const primeiraMarca = supplements.flatMap((s) => s.takenDates).sort()[0];
+  if (!primeiraMarca) return null;
+  const teto = addDays(today, -27);
+  const inicio = primeiraMarca > teto ? primeiraMarca : teto;
+  if (inicio > today) return null;
+  return daysRange(inicio, today);
+}
+
+// A aba de Suplementos já mostra a sequência de cada um (`streakFor`, no
+// próprio card). O que ela não junta é o conjunto: quem nunca marcou um deles,
+// quem mudou de ritmo de uma semana pra outra, e a adesão somada dos ativos —
+// nenhuma dessas três leituras existe olhando um card de cada vez.
+export function buildSupplementInsights(supplements = [], today = todayISO()) {
+  const w = writer("supplements");
+  const items = [];
+  const active = supplements.filter((s) => s.active !== false);
+  if (active.length === 0) return items;
+
+  const nunca = active.filter(
+    (s) =>
+      s.takenDates.length === 0 &&
+      s.createdAt &&
+      daysBetween(s.createdAt.slice(0, 10), today) >= 3,
+  );
+  if (nunca.length > 0) {
+    const nomes = joinNamesCapped(nunca.map((s) => `"${s.name}"`), 2);
+    items.push(
+      w.down(
+        "nunca",
+        nunca.length === 1
+          ? `${nomes} está cadastrado desde que você criou e nunca foi marcado como tomado.`
+          : `${nunca.length} suplementos nunca foram marcados como tomados: ${nomes}.`,
+        nunca.length === 1
+          ? `${nomes} nunca foi marcado como tomado`
+          : `${nunca.length} suplementos nunca foram tomados (${nomes})`,
+      ),
+    );
+  }
+
+  /* Caiu ou subiu de ritmo, semana contra semana — o mesmo cruzamento que já
+     existe para hábitos: suplemento também é rotina que passa despercebida
+     quando ninguém está comparando um período com o outro. */
+  for (const supplement of active) {
+    if (supplement.takenDates.length === 0 || !supplement.createdAt) continue;
+    const idade = daysBetween(supplement.createdAt.slice(0, 10), today);
+    if (idade < 11) continue;
+    const recente = supplement.takenDates.filter(
+      (d) => d >= addDays(today, -6) && d <= today,
+    ).length;
+    const anterior = supplement.takenDates.filter(
+      (d) => d >= addDays(today, -13) && d <= addDays(today, -7),
+    ).length;
+    if (anterior >= 3 && recente <= anterior - 3) {
+      items.push(
+        w.down(
+          `queda-${supplement.id}`,
+          `"${supplement.name}" caiu de ${anterior} pra ${recente} ${plural(recente, "dia", "dias")} de uma semana pra outra.`,
+          `"${supplement.name}" caiu de ${anterior} pra ${recente} dias de uma semana pra outra`,
+        ),
+      );
+    } else if (anterior >= 1 && recente >= anterior + 3) {
+      items.push(
+        w.up(
+          `subiu-${supplement.id}`,
+          `"${supplement.name}" subiu de ${anterior} pra ${recente} dias de uma semana pra outra.`,
+          `"${supplement.name}" subiu de ${anterior} pra ${recente} dias na semana`,
+        ),
+      );
+    }
+  }
+
+  /* Adesão somada da janela — nenhuma tela soma os suplementos juntos, só
+     mostra a sequência de cada um separado. */
+  const window = supplementWindow(active, today);
+  if (window && window.length >= 7 && active.length >= 2) {
+    const naJanela = new Set(window);
+    const possivel = active.length * window.length;
+    const tomado = active.reduce(
+      (sum, s) => sum + s.takenDates.filter((d) => naJanela.has(d)).length,
+      0,
+    );
+    const taxa = tomado / possivel;
+    if (taxa < 0.6) {
+      items.push(
+        w.tip(
+          "adesao-geral",
+          `Somando os ${active.length} suplementos ativos, você tomou ${Math.round(taxa * 100)}% do possível nos últimos ${daysText(window.length)}.`,
+          `a adesão somada aos ${active.length} suplementos ativos está em ${Math.round(taxa * 100)}% nos últimos ${daysText(window.length)}`,
+        ),
+      );
+    }
+  }
+
+  return sortInsights(items);
+}
+
 /* --------------------------------- força --------------------------------- */
 
 function parseWeight(raw) {
@@ -1199,6 +1300,27 @@ export function buildTaskInsights(tasks = [], today = todayISO()) {
     items.push(w.up("zerada", "Sua lista está zerada: nenhuma tarefa pendente.", "sua lista de tarefas está zerada"));
   }
 
+  /* Dia que já vem cheio nos próximos 7 — a lista mostra cada tarefa solta,
+     ordenada por data, e não soma quantas caem no mesmo dia adiante. Não
+     depende da Google Agenda estar conectada: só olha a própria data da
+     tarefa, que já é informação futura que o app tem e não usava. */
+  const semana = pendentes.filter((t) => t.date && t.date > today && t.date <= addDays(today, 7));
+  if (semana.length >= 3) {
+    const porDia = new Map();
+    for (const t of semana) porDia.set(t.date, (porDia.get(t.date) ?? 0) + 1);
+    const [diaCheio, quantidade] = [...porDia.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (quantidade >= 3) {
+      const nome = dayName(diaCheio, today);
+      items.push(
+        w.tip(
+          "dia-cheio-semana",
+          `${nome.charAt(0).toUpperCase() + nome.slice(1)} já tem ${quantidade} tarefas marcadas — é o dia mais carregado dos próximos 7.`,
+          `${nome} já concentra ${quantidade} tarefas nos próximos dias`,
+        ),
+      );
+    }
+  }
+
   return sortInsights(items);
 }
 
@@ -1213,7 +1335,17 @@ function dayName(dateISO, today) {
 // O que só existe olhando duas áreas ao mesmo tempo. Nenhuma aba pode mostrar
 // isso sem invadir a outra, então mora na visão geral.
 export function buildCrossInsights(
-  { habits = [], workout = null, journal = [], sessions = [], tasks = [], events = [], calendarConnected = false },
+  {
+    habits = [],
+    supplements = [],
+    workout = null,
+    journal = [],
+    sessions = [],
+    tasks = [],
+    events = [],
+    calendarConnected = false,
+    taskSummary = null,
+  },
   today = todayISO(),
 ) {
   const w = writer("cross");
@@ -1353,6 +1485,53 @@ export function buildCrossInsights(
     }
   }
 
+  /* Qual área está indo melhor essa semana — pergunta que nenhuma aba
+     responde sozinha, porque cada uma só mostra a própria taxa. Comparável
+     entre hábitos, suplementos e tarefas: as três têm uma taxa de conclusão
+     no mesmo intervalo (últimos 7 dias) e no mesmo formato — a única coisa
+     que muda é o denominador. */
+  const semanaAtras = addDays(today, -6);
+  const dias7 = daysRange(semanaAtras, today);
+  const candidatos = [];
+
+  const primeiraHabito = active.flatMap((h) => h.completions).sort()[0];
+  if (active.length >= 2 && primeiraHabito && primeiraHabito <= semanaAtras) {
+    const taxa = avg(
+      dias7.map((d) => active.filter((h) => h.completions.includes(d)).length / active.length),
+    );
+    candidatos.push({ area: "hábitos", taxa });
+  }
+
+  const suplementosAtivos = supplements.filter((s) => s.active !== false);
+  const primeiraSupp = suplementosAtivos.flatMap((s) => s.takenDates).sort()[0];
+  if (suplementosAtivos.length >= 2 && primeiraSupp && primeiraSupp <= semanaAtras) {
+    const taxa = avg(
+      dias7.map(
+        (d) => suplementosAtivos.filter((s) => s.takenDates.includes(d)).length / suplementosAtivos.length,
+      ),
+    );
+    candidatos.push({ area: "suplementos", taxa });
+  }
+
+  if (taskSummary?.total >= 3 && taskSummary.rate != null) {
+    candidatos.push({ area: "tarefas", taxa: taskSummary.rate });
+  }
+
+  if (candidatos.length >= 2) {
+    candidatos.sort((a, b) => b.taxa - a.taxa);
+    const [melhor, ...resto] = candidatos;
+    if (melhor.taxa - resto[0].taxa >= 0.15) {
+      const comparacao = resto.map((c) => `${Math.round(c.taxa * 100)}% em ${c.area}`).join(" e ");
+      items.push(
+        w.up(
+          "melhor-area",
+          `Essa semana, ${melhor.area} é onde você está indo melhor: ${Math.round(melhor.taxa * 100)}% de adesão, contra ${comparacao}.`,
+          `essa semana ${melhor.area} está na frente das outras áreas, com ${Math.round(melhor.taxa * 100)}% de adesão`,
+        ),
+      );
+    }
+  }
+
   return sortInsights(items);
 }
 
@@ -1361,6 +1540,7 @@ export function buildCrossInsights(
 const AREA_LEAD = {
   cross: "",
   habits: "Nos hábitos, ",
+  supplements: "Nos suplementos, ",
   gym: "Na parte de força, ",
   running: "Na corrida, ",
   journal: "No diário, ",
@@ -1369,8 +1549,8 @@ const AREA_LEAD = {
 
 // Ordem em que as áreas entram no texto: o cruzamento abre porque é o que
 // nenhuma aba conseguiu dizer, e as tarefas fecham porque são o assunto mais
-// solto dos cinco.
-const AREA_ORDER = ["cross", "habits", "gym", "running", "journal", "tasks"];
+// solto dos seis.
+const AREA_ORDER = ["cross", "habits", "supplements", "gym", "running", "journal", "tasks"];
 
 function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -1409,6 +1589,7 @@ export function buildProfileParagraph(areas, { taskSummary } = {}) {
 export function buildInsights({
   tasks = [],
   habits = [],
+  supplements = [],
   workout = { exercises: [] },
   bodyFat = [],
   running = { races: [], plan: null, sessions: [] },
@@ -1422,10 +1603,11 @@ export function buildInsights({
 
   const areas = {
     cross: buildCrossInsights(
-      { habits, workout, journal, sessions, tasks, events, calendarConnected },
+      { habits, supplements, workout, journal, sessions, tasks, events, calendarConnected, taskSummary },
       today,
     ),
     habits: buildHabitInsights(habits, today),
+    supplements: buildSupplementInsights(supplements, today),
     gym: buildGymInsights(workout, bodyFat, { journal }, today),
     running: buildRunningInsights(running, today),
     journal: buildJournalInsights(journal, { workout, sessions }, today),
@@ -1435,6 +1617,7 @@ export function buildInsights({
   const hasAnyData =
     tasks.length > 0 ||
     habits.length > 0 ||
+    supplements.length > 0 ||
     (workout?.exercises?.length ?? 0) > 0 ||
     bodyFat.length > 0 ||
     (running?.races?.length ?? 0) > 0 ||
