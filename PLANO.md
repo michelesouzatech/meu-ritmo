@@ -120,6 +120,10 @@ Cinco melhorias definidas depois do MVP no ar, feitas uma por vez. A ordem foi t
   - Feito no Supabase: 2 tabelas novas (`supplements`, `supplement_logs`) com RLS igual às demais.
   - Ainda não entra nos Insights nem tem lembrete de verdade (notificação) — combinado que o lembrete fica pra depois, quando existir a central de avisos do item 5.
   - **Histórico e linha do tempo, igual Hábitos** — dia esquecido acontece, e sem poder voltar no calendário o registro se perderia pra sempre. Suplementos ganhou o mesmo seletor de data (dropdown com calendário do mês) e a mesma faixa da semana que Hábitos já tinha, reaproveitando os componentes existentes (`HabitCalendar`, `HabitWeekStrip`) — um suplemento é, pro histórico, a mesma coisa que um hábito: um nome e as datas em que foi cumprido. O dropdown de data saiu de dentro de `HabitsScreen.jsx` e virou `src/components/DateDropdown.jsx`, compartilhado pelas duas sub-abas.
+- [x] **Insights por IA (Gemini) removidos** *(reverte os itens 108 e 113 acima)* — Em uso real a camada de IA voltou erro atrás de erro: 504 por timeout, trava de geração dupla ficando presa quando a chamada caía no meio, e mesmo depois de ajustar timeout e orçamento de pensamento, a geração continuava demorando demais pra tela do celular. Decisão: tirar o Gemini do app inteiro e deixar só o motor de regras, que é determinístico, não depende de rede nem de cota e nunca deu esse tipo de problema.
+  - Removidos do front-end: `src/hooks/useAiInsights.js`, `src/lib/aiInsights.js`, `src/lib/aiSummary.js`, `src/lib/momento.js`. `InsightsScreen.jsx` voltou a mostrar só o parágrafo de `lib/insights.js`, sem estado de carregando/erro/tentar de novo.
+  - Removidos do Supabase: a Edge Function `insights-ia` e a tabela `ai_insights` (histórico de leituras já geradas, sem uso depois da remoção).
+  - Os itens 108 e 113 ficam registrados acima como estavam, pra manter o histórico de por que a IA tinha entrado e o que ela fazia — só não refletem mais o estado atual do app.
 
 ## 7. Versão 2 (fica pra depois)
 

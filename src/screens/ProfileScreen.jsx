@@ -24,7 +24,6 @@ function ProfileScreen({
   tasks,
   habits,
   regras,
-  ai,
   calendar,
   onToggleTask,
   onConnectCalendar,
@@ -148,7 +147,7 @@ function ProfileScreen({
         Sair da conta
       </button>
 
-      <InsightsScreen regras={regras} ai={ai} onNavigate={onNavigate} />
+      <InsightsScreen regras={regras} />
     </div>
   );
 }

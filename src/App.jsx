@@ -31,7 +31,7 @@ import { useGoogleCalendar } from "./hooks/useGoogleCalendar.js";
 import { useRunning } from "./hooks/useRunning.js";
 import { useJournal } from "./hooks/useJournal.js";
 import { useSaveQueue } from "./hooks/useSaveQueue.js";
-import { useAiInsights } from "./hooks/useAiInsights.js";
+import { buildInsights } from "./lib/insights.js";
 import * as db from "./lib/db.js";
 
 const emptyWorkout = { createdAt: null, photoName: null, photoDataUrl: null, exercises: [] };
@@ -160,8 +160,7 @@ function App() {
   // Os insights são calculados uma vez aqui em cima e distribuídos pras abas,
   // não recalculados em cada tela. As áreas se cruzam — o dia de treino
   // explica o hábito que caiu, a agenda cheia explica a tarefa encalhada — e
-  // só o App enxerga todas ao mesmo tempo. É também o que permite pedir uma
-  // única leitura por dia ao Gemini em vez de uma por aba.
+  // só o App enxerga todas ao mesmo tempo.
   const insightData = useMemo(
     () => ({
       tasks,
@@ -187,7 +186,7 @@ function App() {
     ],
   );
 
-  const ai = useAiInsights({ userId, ready: !loading, data: insightData });
+  const regras = useMemo(() => buildInsights(insightData), [insightData]);
 
   // A navegação carrega a sub-aba junto porque as ações sugeridas no Perfil
   // apontam pra dentro da aba Treino. Pelo menu de baixo ela vem nula, e a
@@ -611,8 +610,7 @@ function App() {
             user={session.user}
             tasks={tasks}
             habits={habits}
-            regras={ai.regras}
-            ai={ai}
+            regras={regras}
             calendar={calendar}
             onToggleTask={toggleTask}
             onConnectCalendar={connectGoogleCalendar}
