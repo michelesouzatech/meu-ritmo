@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ArrowLeft, Camera, LogOut } from "lucide-react";
+import { ArrowLeft, Camera, LogOut, Gift, ChevronRight } from "lucide-react";
 import CatMascot from "../components/CatMascot.jsx";
 import AgendaCard from "../components/AgendaCard.jsx";
 import InsightsScreen from "./InsightsScreen.jsx";
@@ -25,6 +25,7 @@ function ProfileScreen({
   habits,
   regras,
   calendar,
+  pointsBalance,
   onToggleTask,
   onConnectCalendar,
   onRefreshCalendar,
@@ -123,6 +124,23 @@ function ProfileScreen({
         <StatCard label="tarefas concluídas" value={doneTasks} />
         <StatCard label="hábitos ativos" value={activeHabits} />
       </div>
+
+      <button
+        type="button"
+        onClick={() => onNavigate("rewards")}
+        className="ritmo-card mb-6 flex w-full items-center gap-3 rounded-2xl p-4 text-left transition-shadow hover:shadow-md"
+      >
+        <span className="ritmo-glass-pill flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ritmo-pink-deep">
+          <Gift size={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ritmo-ink-soft">
+            Recompensas
+          </p>
+          <p className="text-lg font-semibold text-ritmo-text">{pointsBalance} pontos</p>
+        </div>
+        <ChevronRight size={18} className="shrink-0 text-ritmo-text/30" />
+      </button>
 
       <AgendaCard
         status={calendar.status}

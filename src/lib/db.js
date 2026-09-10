@@ -93,6 +93,16 @@ const toJournalEntry = (r) => ({
   notes: r.notes ?? "",
 });
 
+const toReward = (r) => ({ id: r.id, name: r.name, cost: r.cost });
+
+const toRedemption = (r) => ({
+  id: r.id,
+  rewardId: r.reward_id,
+  rewardName: r.reward_name,
+  cost: r.cost,
+  redeemedAt: r.redeemed_at,
+});
+
 const toRunSession = (r) => ({
   id: r.id,
   planId: r.plan_id,
@@ -183,6 +193,13 @@ function journalColumns(data) {
   return out;
 }
 
+function rewardColumns(data) {
+  const out = {};
+  if ("name" in data) out.name = data.name;
+  if ("cost" in data) out.cost = data.cost;
+  return out;
+}
+
 function runSessionColumns(data) {
   const out = {};
   if ("planId" in data) out.plan_id = data.planId ?? null;
@@ -232,6 +249,9 @@ export async function loadAll(userId) {
     runSessionRows,
     journalRows,
     pointRuleRows,
+    pointsRows,
+    rewardRows,
+    redemptionRows,
   ] = await Promise.all([
       supabase
         .from("tasks")
@@ -305,6 +325,19 @@ export async function loadAll(userId) {
         .order("entry_date")
         .then(unwrap),
       supabase.from("point_rules").select("*").then(unwrap),
+      supabase.from("points_ledger").select("points").eq("user_id", userId).then(unwrap),
+      supabase
+        .from("rewards")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at")
+        .then(unwrap),
+      supabase
+        .from("reward_redemptions")
+        .select("*")
+        .eq("user_id", userId)
+        .order("redeemed_at", { ascending: false })
+        .then(unwrap),
     ]);
 
   const habits = habitRows.map(toHabit);
@@ -344,6 +377,10 @@ export async function loadAll(userId) {
     },
     journal: journalRows.map(toJournalEntry),
     pointRules: Object.fromEntries(pointRuleRows.map((r) => [r.event_type, r.points])),
+    pointsEarned: pointsRows.reduce((sum, r) => sum + r.points, 0),
+    pointsSpent: redemptionRows.reduce((sum, r) => sum + r.cost, 0),
+    rewards: rewardRows.map(toReward),
+    redemptions: redemptionRows.map(toRedemption),
   };
 }
 
@@ -372,6 +409,38 @@ export const revokePoints = (eventType, sourceId) =>
     .eq("event_type", eventType)
     .eq("source_id", sourceId)
     .then(unwrap);
+
+// ---------- recompensas ----------
+
+export const insertReward = (userId, reward) =>
+  supabase
+    .from("rewards")
+    .insert({ id: reward.id, user_id: userId, ...rewardColumns(reward) })
+    .then(unwrap);
+
+export const updateReward = (id, patch) =>
+  supabase.from("rewards").update(rewardColumns(patch)).eq("id", id).then(unwrap);
+
+export const removeReward = (id) =>
+  supabase.from("rewards").delete().eq("id", id).then(unwrap);
+
+// A recompensa fica com nome e custo gravados na hora do resgate — se você
+// editar ou excluir a recompensa depois, o histórico continua contando a
+// mesma história de quando ela foi trocada por pontos.
+export const redeemReward = (userId, redemption) =>
+  supabase
+    .from("reward_redemptions")
+    .insert({
+      id: redemption.id,
+      user_id: userId,
+      reward_id: redemption.rewardId,
+      reward_name: redemption.rewardName,
+      cost: redemption.cost,
+    })
+    .then(unwrap);
+
+export const removeRedemption = (id) =>
+  supabase.from("reward_redemptions").delete().eq("id", id).then(unwrap);
 
 // ---------- tarefas ----------
 

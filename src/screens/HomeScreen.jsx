@@ -147,8 +147,15 @@ function summaryLines({
   events,
   running,
   today,
+  readyRewards,
 }) {
   const lines = [];
+
+  if (readyRewards.length === 1) {
+    lines.push(`🎁 Você já tem pontos pra resgatar "${readyRewards[0].name}"!`);
+  } else if (readyRewards.length > 1) {
+    lines.push(`🎁 Você já pode resgatar ${readyRewards.length} recompensas cadastradas!`);
+  }
 
   if (overdueTasks.length === 1) {
     const daysLate = daysBetween(overdueTasks[0].date, today);
@@ -203,10 +210,13 @@ function HomeScreen({
   user,
   calendar,
   running,
+  pointsBalance,
+  rewards,
   onToggleTask,
   onNavigate,
 }) {
   const today = todayISO();
+  const readyRewards = rewards.filter((r) => pointsBalance >= r.cost);
   const pendingTasks = tasks
     .filter((t) => !t.done)
     .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
@@ -229,6 +239,7 @@ function HomeScreen({
     events: calendar.status === "ready" ? calendar.events : [],
     running,
     today,
+    readyRewards,
   });
 
   return (

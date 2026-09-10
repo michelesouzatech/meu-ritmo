@@ -17,6 +17,7 @@ import {
 } from "./screens/runSheets.jsx";
 import { JournalEntryFormSheet } from "./screens/journalSheets.jsx";
 import { SupplementFormSheet } from "./screens/SupplementsTab.jsx";
+import RewardsScreen, { RewardFormSheet } from "./screens/RewardsScreen.jsx";
 import ProfileScreen from "./screens/ProfileScreen.jsx";
 import LoginScreen from "./screens/LoginScreen.jsx";
 import ResetPasswordScreen from "./screens/ResetPasswordScreen.jsx";
@@ -70,6 +71,16 @@ function App() {
   const [journalData, setJournalData] = useState(null);
   const [journalDate, setJournalDate] = useState(todayISO);
   const [pointRules, setPointRules] = useState({});
+  const [pointsEarned, setPointsEarned] = useState(0);
+  const [pointsSpent, setPointsSpent] = useState(0);
+  const [rewards, setRewards] = useState([]);
+  const [redemptions, setRedemptions] = useState([]);
+  const pointsBalance = pointsEarned - pointsSpent;
+
+  // Soma direto no total em memória — a mesma escrita otimista que já
+  // acontece pro resto (marca hábito, conclui tarefa) valeria pouco se o
+  // saldo só atualizasse minutos depois, no próximo refetch.
+  const addPoints = useCallback((delta) => setPointsEarned((p) => p + delta), []);
 
   // Guarda a lista atual pra calcular posições sem depender do render.
   const exercisesRef = useRef([]);
@@ -144,6 +155,10 @@ function App() {
         setRunningData(data.running);
         setJournalData(data.journal);
         setPointRules(data.pointRules);
+        setPointsEarned(data.pointsEarned);
+        setPointsSpent(data.pointsSpent);
+        setRewards(data.rewards);
+        setRedemptions(data.redemptions);
         setLoadError(false);
         fetchedAtRef.current = Date.now();
       } catch {
@@ -164,8 +179,8 @@ function App() {
   // já apareceu na tela.
   const { save, pending: pendingSaves, failing: saveFailing } = useSaveQueue();
 
-  const running = useRunning({ userId, save, initial: runningData, pointRules });
-  const journal = useJournal({ userId, save, initial: journalData, pointRules });
+  const running = useRunning({ userId, save, initial: runningData, pointRules, addPoints });
+  const journal = useJournal({ userId, save, initial: journalData, pointRules, addPoints });
 
   // Voltou pro app depois de um tempo: busca os dados de novo, do mesmo jeito
   // que a Google Agenda já faz (useGoogleCalendar.js). Sem isso, quem registra
@@ -190,6 +205,10 @@ function App() {
         setRunningData(data.running);
         setJournalData(data.journal);
         setPointRules(data.pointRules);
+        setPointsEarned(data.pointsEarned);
+        setPointsSpent(data.pointsSpent);
+        setRewards(data.rewards);
+        setRedemptions(data.redemptions);
         fetchedAtRef.current = Date.now();
       } catch {
         // Sem sorte agora: os dados na tela continuam sendo os últimos bons,
@@ -258,6 +277,7 @@ function App() {
     if (!current) return;
     const done = !current.done;
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done } : t)));
+    addPoints((done ? 1 : -1) * (pointRules.task_done || 0));
     save(async () => {
       await db.updateTask(id, { done });
       if (done) {
@@ -318,6 +338,7 @@ function App() {
           : h,
       ),
     );
+    addPoints((wasDone ? -1 : 1) * (pointRules.habit_completion || 0));
     save(async () => {
       if (wasDone) {
         await db.removeCompletion(id, date);
@@ -383,6 +404,44 @@ function App() {
     save(() => db.reactivateSupplement(id));
   }
 
+  function addReward(data) {
+    const reward = { id: crypto.randomUUID(), ...data };
+    setRewards((prev) => [...prev, reward]);
+    save(() => db.insertReward(userId, reward));
+  }
+
+  function editReward(id, data) {
+    setRewards((prev) => prev.map((r) => (r.id === id ? { ...r, ...data } : r)));
+    save(() => db.updateReward(id, data));
+  }
+
+  function deleteReward(id) {
+    setRewards((prev) => prev.filter((r) => r.id !== id));
+    save(() => db.removeReward(id));
+  }
+
+  function redeemReward(reward) {
+    if (pointsBalance < reward.cost) return;
+    const redemption = {
+      id: crypto.randomUUID(),
+      rewardId: reward.id,
+      rewardName: reward.name,
+      cost: reward.cost,
+      redeemedAt: new Date().toISOString(),
+    };
+    setRedemptions((prev) => [redemption, ...prev]);
+    setPointsSpent((p) => p + reward.cost);
+    save(() => db.redeemReward(userId, redemption));
+  }
+
+  function undoRedemption(id) {
+    const redemption = redemptions.find((r) => r.id === id);
+    if (!redemption) return;
+    setRedemptions((prev) => prev.filter((r) => r.id !== id));
+    setPointsSpent((p) => p - redemption.cost);
+    save(() => db.removeRedemption(id));
+  }
+
   function toggleSupplementDate(id, date) {
     const current = supplements.find((s) => s.id === id);
     if (!current) return;
@@ -400,6 +459,7 @@ function App() {
           : s,
       ),
     );
+    addPoints((wasTaken ? -1 : 1) * (pointRules.supplement_log || 0));
     save(async () => {
       if (wasTaken) {
         await db.removeSupplementLog(id, date);
@@ -625,6 +685,8 @@ function App() {
             user={session.user}
             calendar={calendar}
             running={running}
+            pointsBalance={pointsBalance}
+            rewards={rewards}
             onToggleTask={toggleTask}
             onNavigate={navigate}
           />
@@ -710,6 +772,7 @@ function App() {
             habits={habits}
             regras={regras}
             calendar={calendar}
+            pointsBalance={pointsBalance}
             onToggleTask={toggleTask}
             onConnectCalendar={connectGoogleCalendar}
             onRefreshCalendar={calendar.refresh}
@@ -718,6 +781,19 @@ function App() {
               setSheet({ type: "event", event: null, dateISO, startTime })
             }
             onLogout={handleLogout}
+            onNavigate={navigate}
+          />
+        )}
+        {tab === "rewards" && (
+          <RewardsScreen
+            balance={pointsBalance}
+            rewards={rewards}
+            redemptions={redemptions}
+            onAdd={() => setSheet("reward")}
+            onEdit={(reward) => setSheet({ type: "editReward", reward })}
+            onDelete={deleteReward}
+            onRedeem={redeemReward}
+            onUndoRedeem={undoRedemption}
             onNavigate={navigate}
           />
         )}
@@ -753,6 +829,16 @@ function App() {
           supplement={sheet.supplement}
           onClose={() => setSheet(null)}
           onSave={(data) => editSupplement(sheet.supplement.id, data)}
+        />
+      )}
+      {sheet === "reward" && (
+        <RewardFormSheet onClose={() => setSheet(null)} onSave={addReward} />
+      )}
+      {sheet?.type === "editReward" && (
+        <RewardFormSheet
+          reward={sheet.reward}
+          onClose={() => setSheet(null)}
+          onSave={(data) => editReward(sheet.reward.id, data)}
         />
       )}
       {sheet === "exercise" && (
