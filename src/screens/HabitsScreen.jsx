@@ -1,5 +1,16 @@
 import { useMemo, useState } from "react";
-import { Check, Trash2, RotateCcw, Flame, Pencil, GripVertical, Repeat, Pill } from "lucide-react";
+import {
+  Check,
+  Trash2,
+  Archive,
+  ArchiveRestore,
+  History,
+  Flame,
+  Pencil,
+  GripVertical,
+  Repeat,
+  Pill,
+} from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -153,7 +164,7 @@ export function HabitFormSheet({ habit, onClose, onSave }) {
   );
 }
 
-function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
+function HabitCard({ habit, date, onToggleDate, onDelete, onFinish, onEdit }) {
   const progress = habitProgress(habit);
   const { isFinished, notStarted } = progress;
   const today = todayISO();
@@ -241,22 +252,56 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
               <Trash2 size={14} />
             </button>
           </div>
-          {isFinished && (
-            <button
-              type="button"
-              onClick={() => onRestart(habit.id)}
-              className="ritmo-ghost flex min-h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium text-ritmo-pink-deep"
-            >
-              <RotateCcw size={12} /> Novo ciclo
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => onFinish(habit.id)}
+            className="ritmo-ghost flex min-h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium text-ritmo-pink-deep"
+          >
+            <Archive size={12} /> Encerrar
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function SortableHabitItem({ habit, date, onToggleDate, onDelete, onRestart, onEdit }) {
+function FinishedHabitCard({ habit, onReactivate, onDelete }) {
+  const endedLabel = habit.endedAt ? formatDatePtBr(habit.endedAt.slice(0, 10)) : "";
+  return (
+    <div className="ritmo-card rounded-2xl p-3.5 opacity-70">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-ritmo-text">{habit.name}</p>
+          <p className="mt-0.5 text-xs text-ritmo-muted">
+            {habit.completions.length} dia{habit.completions.length === 1 ? "" : "s"} marcado
+            {habit.completions.length === 1 ? "" : "s"}
+            {endedLabel ? ` · encerrado em ${endedLabel}` : ""}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => onReactivate(habit.id)}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
+            aria-label="Reativar hábito"
+          >
+            <ArchiveRestore size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(habit.id)}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
+            aria-label="Excluir hábito"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SortableHabitItem({ habit, date, onToggleDate, onDelete, onFinish, onEdit }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: habit.id });
 
@@ -283,10 +328,40 @@ function SortableHabitItem({ habit, date, onToggleDate, onDelete, onRestart, onE
           date={date}
           onToggleDate={onToggleDate}
           onDelete={onDelete}
-          onRestart={onRestart}
+          onFinish={onFinish}
           onEdit={onEdit}
         />
       </div>
+    </div>
+  );
+}
+
+function HabitsHistorySection({ habits, onReactivate, onDelete }) {
+  const [open, setOpen] = useState(false);
+  if (habits.length === 0) return null;
+
+  return (
+    <div className="mt-4">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="ritmo-ghost flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-ritmo-ink-soft"
+      >
+        <History size={13} />
+        {open ? "Ocultar" : "Ver"} hábitos encerrados ({habits.length})
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3">
+          {habits.map((habit) => (
+            <FinishedHabitCard
+              key={habit.id}
+              habit={habit}
+              onReactivate={onReactivate}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -295,13 +370,16 @@ function HabitsTab({
   habits,
   onToggleDate,
   onDelete,
-  onRestart,
+  onFinish,
+  onReactivate,
   onEdit,
   onReorder,
   onAdd,
 }) {
   const [selectedDate, setSelectedDate] = useState(todayISO());
-  const insights = useMemo(() => buildHabitInsights(habits), [habits]);
+  const activeHabits = useMemo(() => habits.filter((h) => h.status !== "finished"), [habits]);
+  const finishedHabits = useMemo(() => habits.filter((h) => h.status === "finished"), [habits]);
+  const insights = useMemo(() => buildHabitInsights(activeHabits), [activeHabits]);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
@@ -311,7 +389,7 @@ function HabitsTab({
   function handleDragEnd(event) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const ids = habits.map((h) => h.id);
+    const ids = activeHabits.map((h) => h.id);
     const oldIndex = ids.indexOf(active.id);
     const newIndex = ids.indexOf(over.id);
     onReorder(arrayMove(ids, oldIndex, newIndex));
@@ -326,7 +404,7 @@ function HabitsTab({
         <AddButton label="Novo" onClick={onAdd} />
       </header>
 
-      {habits.length === 0 ? (
+      {activeHabits.length === 0 ? (
         <p className="ritmo-card rounded-2xl p-4 text-center text-sm text-ritmo-muted">
           Toque no botão + para criar seu primeiro hábito.
         </p>
@@ -335,25 +413,25 @@ function HabitsTab({
           <DateDropdown
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
-            habits={habits}
+            habits={activeHabits}
           />
           <HabitWeekStrip
-            habits={habits}
+            habits={activeHabits}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
           />
           <InsightsPanel items={insights} className="mb-4" />
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={habits.map((h) => h.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={activeHabits.map((h) => h.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-3">
-                {habits.map((habit) => (
+                {activeHabits.map((habit) => (
                   <SortableHabitItem
                     key={habit.id}
                     habit={habit}
                     date={selectedDate}
                     onToggleDate={onToggleDate}
                     onDelete={onDelete}
-                    onRestart={onRestart}
+                    onFinish={onFinish}
                     onEdit={onEdit}
                   />
                 ))}
@@ -362,6 +440,12 @@ function HabitsTab({
           </DndContext>
         </>
       )}
+
+      <HabitsHistorySection
+        habits={finishedHabits}
+        onReactivate={onReactivate}
+        onDelete={onDelete}
+      />
     </div>
   );
 }
@@ -370,13 +454,16 @@ function HabitsScreen({
   habits,
   onToggleDate,
   onDelete,
-  onRestart,
+  onFinish,
+  onReactivate,
   onEdit,
   onReorder,
   onAdd,
   supplements,
   onToggleSupplementDate,
   onDeleteSupplement,
+  onFinishSupplement,
+  onReactivateSupplement,
   onEditSupplement,
   onAddSupplement,
 }) {
@@ -402,7 +489,8 @@ function HabitsScreen({
           habits={habits}
           onToggleDate={onToggleDate}
           onDelete={onDelete}
-          onRestart={onRestart}
+          onFinish={onFinish}
+          onReactivate={onReactivate}
           onEdit={onEdit}
           onReorder={onReorder}
           onAdd={onAdd}
@@ -413,6 +501,8 @@ function HabitsScreen({
           supplements={supplements}
           onToggleDate={onToggleSupplementDate}
           onDelete={onDeleteSupplement}
+          onFinish={onFinishSupplement}
+          onReactivate={onReactivateSupplement}
           onEdit={onEditSupplement}
           onAdd={onAddSupplement}
         />

@@ -215,6 +215,7 @@ function HomeScreen({
   const urgentNoDateTasks = pendingTasks.filter((t) => t.urgent && !t.date);
   const upcomingTasks = [...overdueTasks, ...todaysTasks, ...urgentNoDateTasks];
   const activeHabits = habits.filter((h) => {
+    if (h.status === "finished") return false;
     const p = habitProgress(h);
     return !p.isFinished && !p.notStarted;
   });

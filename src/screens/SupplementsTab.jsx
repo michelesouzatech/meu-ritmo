@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, Trash2, Pencil, Flame } from "lucide-react";
+import { Check, Trash2, Pencil, Flame, Archive, ArchiveRestore, History } from "lucide-react";
 import Sheet from "../components/Sheet.jsx";
 import AddButton from "../components/AddButton.jsx";
 import HabitWeekStrip from "../components/HabitWeekStrip.jsx";
@@ -92,7 +92,7 @@ function streakFor(takenDates) {
   return streak;
 }
 
-function SupplementCard({ supplement, date, onToggleDate, onDelete, onEdit }) {
+function SupplementCard({ supplement, date, onToggleDate, onDelete, onFinish, onEdit }) {
   const today = todayISO();
   const isEditingToday = date === today;
   const takenOnDate = supplement.takenDates.includes(date);
@@ -149,19 +149,100 @@ function SupplementCard({ supplement, date, onToggleDate, onDelete, onEdit }) {
           </button>
         </div>
       </div>
+      <button
+        type="button"
+        onClick={() => onFinish(supplement.id)}
+        className="ritmo-ghost mt-2 flex min-h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium text-ritmo-pink-deep"
+      >
+        <Archive size={12} /> Encerrar
+      </button>
     </div>
   );
 }
 
-function SupplementsTab({ supplements, onToggleDate, onDelete, onEdit, onAdd }) {
+function FinishedSupplementCard({ supplement, onReactivate, onDelete }) {
+  const endedLabel = supplement.endedAt ? formatDatePtBr(supplement.endedAt.slice(0, 10)) : "";
+  return (
+    <div className="ritmo-card rounded-2xl p-3.5 opacity-70">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-ritmo-text">{supplement.name}</p>
+          <p className="mt-0.5 text-xs text-ritmo-muted">
+            {supplement.takenDates.length} dia{supplement.takenDates.length === 1 ? "" : "s"} tomado
+            {supplement.takenDates.length === 1 ? "" : "s"}
+            {endedLabel ? ` · encerrado em ${endedLabel}` : ""}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => onReactivate(supplement.id)}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
+            aria-label="Reativar suplemento"
+          >
+            <ArchiveRestore size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(supplement.id)}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
+            aria-label="Excluir suplemento"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SupplementsHistorySection({ supplements, onReactivate, onDelete }) {
+  const [open, setOpen] = useState(false);
+  if (supplements.length === 0) return null;
+
+  return (
+    <div className="mt-4">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="ritmo-ghost flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-ritmo-ink-soft"
+      >
+        <History size={13} />
+        {open ? "Ocultar" : "Ver"} suplementos encerrados ({supplements.length})
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3">
+          {supplements.map((supplement) => (
+            <FinishedSupplementCard
+              key={supplement.id}
+              supplement={supplement}
+              onReactivate={onReactivate}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SupplementsTab({ supplements, onToggleDate, onDelete, onFinish, onReactivate, onEdit, onAdd }) {
   const [selectedDate, setSelectedDate] = useState(todayISO());
+  const activeSupplements = useMemo(
+    () => supplements.filter((s) => s.active !== false),
+    [supplements],
+  );
+  const finishedSupplements = useMemo(
+    () => supplements.filter((s) => s.active === false),
+    [supplements],
+  );
   // HabitCalendar/HabitWeekStrip só olham pra `name` + `completions` — os
   // mesmos componentes do histórico de hábitos servem aqui sem duplicar nada.
   const asHabitShape = useMemo(
-    () => supplements.map((s) => ({ id: s.id, name: s.name, completions: s.takenDates })),
-    [supplements],
+    () => activeSupplements.map((s) => ({ id: s.id, name: s.name, completions: s.takenDates })),
+    [activeSupplements],
   );
-  const insights = useMemo(() => buildSupplementInsights(supplements), [supplements]);
+  const insights = useMemo(() => buildSupplementInsights(activeSupplements), [activeSupplements]);
 
   return (
     <div>
@@ -170,7 +251,7 @@ function SupplementsTab({ supplements, onToggleDate, onDelete, onEdit, onAdd }) 
         <AddButton label="Novo" onClick={onAdd} />
       </div>
 
-      {supplements.length === 0 ? (
+      {activeSupplements.length === 0 ? (
         <p className="ritmo-card rounded-2xl p-4 text-center text-sm text-ritmo-muted">
           Toque no botão + para cadastrar seu primeiro suplemento.
         </p>
@@ -189,19 +270,26 @@ function SupplementsTab({ supplements, onToggleDate, onDelete, onEdit, onAdd }) 
           />
           <InsightsPanel items={insights} className="mb-4" />
           <div className="space-y-3">
-            {supplements.map((supplement) => (
+            {activeSupplements.map((supplement) => (
               <SupplementCard
                 key={supplement.id}
                 supplement={supplement}
                 date={selectedDate}
                 onToggleDate={onToggleDate}
                 onDelete={onDelete}
+                onFinish={onFinish}
                 onEdit={onEdit}
               />
             ))}
           </div>
         </>
       )}
+
+      <SupplementsHistorySection
+        supplements={finishedSupplements}
+        onReactivate={onReactivate}
+        onDelete={onDelete}
+      />
     </div>
   );
 }

@@ -280,11 +280,14 @@ function App() {
     save(() => db.updateHabit(id, data));
   }
 
+  // orderedIds só cobre os hábitos ativos (é só o que dá pra arrastar na
+  // tela) — os encerrados continuam no estado, fora da reordenação.
   function reorderHabits(orderedIds) {
     const byId = new Map(habitsRef.current.map((h) => [h.id, h]));
-    const reordered = orderedIds.map((id) => byId.get(id));
-    setHabits(reordered);
-    const pairs = reordered.map((h, position) => ({ id: h.id, position }));
+    const reorderedActive = orderedIds.map((id) => byId.get(id));
+    const untouched = habitsRef.current.filter((h) => !orderedIds.includes(h.id));
+    setHabits([...reorderedActive, ...untouched]);
+    const pairs = reorderedActive.map((h, position) => ({ id: h.id, position }));
     save(() => db.saveHabitPositions(pairs));
   }
 
@@ -315,12 +318,20 @@ function App() {
     save(() => db.removeHabit(id));
   }
 
-  function restartHabit(id) {
-    const startDate = todayISO();
+  function finishHabit(id) {
     setHabits((prev) =>
-      prev.map((h) => (h.id === id ? { ...h, startDate, completions: [] } : h)),
+      prev.map((h) =>
+        h.id === id ? { ...h, status: "finished", endedAt: new Date().toISOString() } : h,
+      ),
     );
-    save(() => db.restartHabit(id, startDate));
+    save(() => db.finishHabit(id));
+  }
+
+  function reactivateHabit(id) {
+    setHabits((prev) =>
+      prev.map((h) => (h.id === id ? { ...h, status: "active", endedAt: null } : h)),
+    );
+    save(() => db.reactivateHabit(id));
   }
 
   function addSupplement(data) {
@@ -338,6 +349,22 @@ function App() {
   function deleteSupplement(id) {
     setSupplements((prev) => prev.filter((s) => s.id !== id));
     save(() => db.removeSupplement(id));
+  }
+
+  function finishSupplement(id) {
+    setSupplements((prev) =>
+      prev.map((s) =>
+        s.id === id ? { ...s, active: false, endedAt: new Date().toISOString() } : s,
+      ),
+    );
+    save(() => db.finishSupplement(id));
+  }
+
+  function reactivateSupplement(id) {
+    setSupplements((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, active: true, endedAt: null } : s)),
+    );
+    save(() => db.reactivateSupplement(id));
   }
 
   function toggleSupplementDate(id, date) {
@@ -596,13 +623,16 @@ function App() {
             habits={habits}
             onToggleDate={toggleHabitDate}
             onDelete={deleteHabit}
-            onRestart={restartHabit}
+            onFinish={finishHabit}
+            onReactivate={reactivateHabit}
             onEdit={(habit) => setSheet({ type: "editHabit", habit })}
             onReorder={reorderHabits}
             onAdd={() => setSheet("habit")}
             supplements={supplements}
             onToggleSupplementDate={toggleSupplementDate}
             onDeleteSupplement={deleteSupplement}
+            onFinishSupplement={finishSupplement}
+            onReactivateSupplement={reactivateSupplement}
             onEditSupplement={(supplement) => setSheet({ type: "editSupplement", supplement })}
             onAddSupplement={() => setSheet("supplement")}
           />

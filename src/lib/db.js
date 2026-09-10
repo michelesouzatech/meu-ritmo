@@ -26,6 +26,8 @@ const toHabit = (r) => ({
   name: r.name,
   periodDays: r.period_days,
   startDate: r.start_date,
+  status: r.status ?? "active",
+  endedAt: r.ended_at ?? null,
   completions: [],
 });
 
@@ -35,6 +37,7 @@ const toSupplement = (r) => ({
   scheduleLabel: r.schedule_label ?? "",
   dose: r.dose ?? "",
   active: r.active,
+  endedAt: r.ended_at ?? null,
   createdAt: r.created_at,
   takenDates: [],
 });
@@ -117,6 +120,8 @@ function habitColumns(data) {
   if ("name" in data) out.name = data.name;
   if ("periodDays" in data) out.period_days = data.periodDays ?? null;
   if ("startDate" in data) out.start_date = data.startDate;
+  if ("status" in data) out.status = data.status;
+  if ("endedAt" in data) out.ended_at = data.endedAt ?? null;
   return out;
 }
 
@@ -126,6 +131,7 @@ function supplementColumns(data) {
   if ("scheduleLabel" in data) out.schedule_label = data.scheduleLabel ?? "";
   if ("dose" in data) out.dose = data.dose ?? "";
   if ("active" in data) out.active = !!data.active;
+  if ("endedAt" in data) out.ended_at = data.endedAt ?? null;
   return out;
 }
 
@@ -393,10 +399,19 @@ export const removeCompletion = (habitId, date) =>
 export const removeHabit = (id) =>
   supabase.from("habits").delete().eq("id", id).then(unwrap);
 
-export async function restartHabit(id, startDate) {
-  unwrap(await supabase.from("habit_completions").delete().eq("habit_id", id));
-  unwrap(await supabase.from("habits").update({ start_date: startDate }).eq("id", id));
-}
+export const finishHabit = (id) =>
+  supabase
+    .from("habits")
+    .update({ status: "finished", ended_at: new Date().toISOString() })
+    .eq("id", id)
+    .then(unwrap);
+
+export const reactivateHabit = (id) =>
+  supabase
+    .from("habits")
+    .update({ status: "active", ended_at: null })
+    .eq("id", id)
+    .then(unwrap);
 
 // ---------- suplementos ----------
 
@@ -416,6 +431,20 @@ export const updateSupplement = (id, patch) =>
 
 export const removeSupplement = (id) =>
   supabase.from("supplements").delete().eq("id", id).then(unwrap);
+
+export const finishSupplement = (id) =>
+  supabase
+    .from("supplements")
+    .update({ active: false, ended_at: new Date().toISOString() })
+    .eq("id", id)
+    .then(unwrap);
+
+export const reactivateSupplement = (id) =>
+  supabase
+    .from("supplements")
+    .update({ active: true, ended_at: null })
+    .eq("id", id)
+    .then(unwrap);
 
 export const insertSupplementLog = (userId, supplementId, date) =>
   supabase

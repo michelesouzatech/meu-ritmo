@@ -37,7 +37,7 @@ function ProfileScreen({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const doneTasks = tasks.filter((t) => t.done).length;
-  const activeHabits = habits.length;
+  const activeHabits = habits.filter((h) => h.status !== "finished").length;
   const today = todayISO();
 
   async function handlePhotoChange(e) {
