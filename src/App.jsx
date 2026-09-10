@@ -22,6 +22,7 @@ import ProfileScreen from "./screens/ProfileScreen.jsx";
 import LoginScreen from "./screens/LoginScreen.jsx";
 import ResetPasswordScreen from "./screens/ResetPasswordScreen.jsx";
 import CatMascot from "./components/CatMascot.jsx";
+import PointsToast from "./components/PointsToast.jsx";
 import GlassBackdrop from "./components/GlassBackdrop.jsx";
 import EventFormSheet from "./components/EventFormSheet.jsx";
 import { todayISO } from "./lib/date.js";
@@ -81,6 +82,19 @@ function App() {
   // acontece pro resto (marca hábito, conclui tarefa) valeria pouco se o
   // saldo só atualizasse minutos depois, no próximo refetch.
   const addPoints = useCallback((delta) => setPointsEarned((p) => p + delta), []);
+
+  const [pointsToast, setPointsToast] = useState(null);
+  const toastTimerRef = useRef(null);
+  const toastIdRef = useRef(0);
+
+  // Só comemora quem ganhou pontos — desmarcar algo não mostra nada.
+  const celebratePoints = useCallback((amount) => {
+    if (!amount) return;
+    toastIdRef.current += 1;
+    setPointsToast({ amount, id: toastIdRef.current });
+    clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setPointsToast(null), 1600);
+  }, []);
 
   // Guarda a lista atual pra calcular posições sem depender do render.
   const exercisesRef = useRef([]);
@@ -179,8 +193,8 @@ function App() {
   // já apareceu na tela.
   const { save, pending: pendingSaves, failing: saveFailing } = useSaveQueue();
 
-  const running = useRunning({ userId, save, initial: runningData, pointRules, addPoints });
-  const journal = useJournal({ userId, save, initial: journalData, pointRules, addPoints });
+  const running = useRunning({ userId, save, initial: runningData, pointRules, addPoints, celebratePoints });
+  const journal = useJournal({ userId, save, initial: journalData, pointRules, addPoints, celebratePoints });
 
   // Voltou pro app depois de um tempo: busca os dados de novo, do mesmo jeito
   // que a Google Agenda já faz (useGoogleCalendar.js). Sem isso, quem registra
@@ -278,6 +292,7 @@ function App() {
     const done = !current.done;
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done } : t)));
     addPoints((done ? 1 : -1) * (pointRules.task_done || 0));
+    if (done) celebratePoints(pointRules.task_done);
     save(async () => {
       await db.updateTask(id, { done });
       if (done) {
@@ -339,6 +354,7 @@ function App() {
       ),
     );
     addPoints((wasDone ? -1 : 1) * (pointRules.habit_completion || 0));
+    if (!wasDone) celebratePoints(pointRules.habit_completion);
     save(async () => {
       if (wasDone) {
         await db.removeCompletion(id, date);
@@ -460,6 +476,7 @@ function App() {
       ),
     );
     addPoints((wasTaken ? -1 : 1) * (pointRules.supplement_log || 0));
+    if (!wasTaken) celebratePoints(pointRules.supplement_log);
     save(async () => {
       if (wasTaken) {
         await db.removeSupplementLog(id, date);
@@ -657,6 +674,7 @@ function App() {
   return (
     <div className="min-h-full flex justify-center">
       <GlassBackdrop />
+      {pointsToast && <PointsToast key={pointsToast.id} amount={pointsToast.amount} />}
       <div className="w-full max-w-md px-5 pt-8 pb-28">
         {loadError && (
           <div className="ritmo-card mb-4 rounded-xl px-3 py-2 text-xs text-ritmo-text">

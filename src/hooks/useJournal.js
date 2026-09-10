@@ -3,7 +3,7 @@ import * as db from "../lib/db.js";
 
 // Guarda o diário de treino. Mesmo padrão do resto: muda a tela na hora e
 // salva no banco atrás.
-export function useJournal({ userId, save, initial, pointRules, addPoints }) {
+export function useJournal({ userId, save, initial, pointRules, addPoints, celebratePoints }) {
   const [entries, setEntries] = useState([]);
 
   useEffect(() => {
@@ -16,7 +16,10 @@ export function useJournal({ userId, save, initial, pointRules, addPoints }) {
     setEntries((prev) => [...prev, entry]);
     // Dia de descanso é uma escolha deliberada de não treinar — não pontua.
     const earnsPoints = entry.activityType !== "rest";
-    if (earnsPoints) addPoints(pointRules.journal_entry || 0);
+    if (earnsPoints) {
+      addPoints(pointRules.journal_entry || 0);
+      celebratePoints(pointRules.journal_entry);
+    }
     save(async () => {
       await db.insertJournalEntry(userId, entry);
       if (earnsPoints) {
