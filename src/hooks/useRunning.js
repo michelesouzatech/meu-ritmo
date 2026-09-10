@@ -5,7 +5,7 @@ import { activePlan as findActivePlan } from "../lib/running.js";
 // Guarda provas, plano de treino e corridas feitas. Segue o mesmo padrão do
 // resto do app: muda a tela na hora e salva no banco atrás, avisando o App
 // pelo `save` quando dá erro.
-export function useRunning({ userId, save, initial }) {
+export function useRunning({ userId, save, initial, pointRules }) {
   const [races, setRaces] = useState([]);
   const [plans, setPlans] = useState([]);
   const [sessions, setSessions] = useState([]);
@@ -69,7 +69,10 @@ export function useRunning({ userId, save, initial }) {
   function addSession(data) {
     const session = { id: crypto.randomUUID(), planId: plan?.id ?? null, ...data };
     setSessions((prev) => [...prev, session]);
-    save(() => db.insertRunSession(userId, session));
+    save(async () => {
+      await db.insertRunSession(userId, session);
+      await db.awardPoints(userId, "run_session", session.id, pointRules.run_session, session.date);
+    });
   }
 
   function editSession(id, data) {
@@ -79,7 +82,10 @@ export function useRunning({ userId, save, initial }) {
 
   function deleteSession(id) {
     setSessions((prev) => prev.filter((s) => s.id !== id));
-    save(() => db.removeRunSession(id));
+    save(async () => {
+      await db.removeRunSession(id);
+      await db.revokePoints("run_session", id);
+    });
   }
 
   return {

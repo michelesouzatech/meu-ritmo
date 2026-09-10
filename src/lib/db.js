@@ -231,6 +231,7 @@ export async function loadAll(userId) {
     runPlanRows,
     runSessionRows,
     journalRows,
+    pointRuleRows,
   ] = await Promise.all([
       supabase
         .from("tasks")
@@ -303,6 +304,7 @@ export async function loadAll(userId) {
         .eq("user_id", userId)
         .order("entry_date")
         .then(unwrap),
+      supabase.from("point_rules").select("*").then(unwrap),
     ]);
 
   const habits = habitRows.map(toHabit);
@@ -341,8 +343,35 @@ export async function loadAll(userId) {
       sessions: runSessionRows.map(toRunSession),
     },
     journal: journalRows.map(toJournalEntry),
+    pointRules: Object.fromEntries(pointRuleRows.map((r) => [r.event_type, r.points])),
   };
 }
+
+// ---------- pontos ----------
+
+// source_id é uma chave natural (não o id da linha) — evita ida extra ao
+// banco só pra descobrir o id de algo que a tela já sabe identificar sozinha
+// (ex: habitId+data). O índice único em (event_type, source_id) garante que
+// marcar/desmarcar não duplica nem perde pontos.
+export async function awardPoints(userId, eventType, sourceId, points, eventDate) {
+  if (!points) return;
+  const { error } = await supabase.from("points_ledger").insert({
+    user_id: userId,
+    event_type: eventType,
+    source_id: sourceId,
+    points,
+    event_date: eventDate,
+  });
+  if (error && error.code !== "23505") throw error;
+}
+
+export const revokePoints = (eventType, sourceId) =>
+  supabase
+    .from("points_ledger")
+    .delete()
+    .eq("event_type", eventType)
+    .eq("source_id", sourceId)
+    .then(unwrap);
 
 // ---------- tarefas ----------
 

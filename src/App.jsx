@@ -69,6 +69,7 @@ function App() {
   const [runningData, setRunningData] = useState(null);
   const [journalData, setJournalData] = useState(null);
   const [journalDate, setJournalDate] = useState(todayISO);
+  const [pointRules, setPointRules] = useState({});
 
   // Guarda a lista atual pra calcular posições sem depender do render.
   const exercisesRef = useRef([]);
@@ -142,6 +143,7 @@ function App() {
         setBodyFat(data.bodyFat);
         setRunningData(data.running);
         setJournalData(data.journal);
+        setPointRules(data.pointRules);
         setLoadError(false);
         fetchedAtRef.current = Date.now();
       } catch {
@@ -162,8 +164,8 @@ function App() {
   // já apareceu na tela.
   const { save, pending: pendingSaves, failing: saveFailing } = useSaveQueue();
 
-  const running = useRunning({ userId, save, initial: runningData });
-  const journal = useJournal({ userId, save, initial: journalData });
+  const running = useRunning({ userId, save, initial: runningData, pointRules });
+  const journal = useJournal({ userId, save, initial: journalData, pointRules });
 
   // Voltou pro app depois de um tempo: busca os dados de novo, do mesmo jeito
   // que a Google Agenda já faz (useGoogleCalendar.js). Sem isso, quem registra
@@ -187,6 +189,7 @@ function App() {
         setBodyFat(data.bodyFat);
         setRunningData(data.running);
         setJournalData(data.journal);
+        setPointRules(data.pointRules);
         fetchedAtRef.current = Date.now();
       } catch {
         // Sem sorte agora: os dados na tela continuam sendo os últimos bons,
@@ -255,7 +258,14 @@ function App() {
     if (!current) return;
     const done = !current.done;
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done } : t)));
-    save(() => db.updateTask(id, { done }));
+    save(async () => {
+      await db.updateTask(id, { done });
+      if (done) {
+        await db.awardPoints(userId, "task_done", id, pointRules.task_done, todayISO());
+      } else {
+        await db.revokePoints("task_done", id);
+      }
+    });
   }
 
   function editTask(id, data) {
@@ -308,9 +318,15 @@ function App() {
           : h,
       ),
     );
-    save(() =>
-      wasDone ? db.removeCompletion(id, date) : db.insertCompletion(userId, id, date),
-    );
+    save(async () => {
+      if (wasDone) {
+        await db.removeCompletion(id, date);
+        await db.revokePoints("habit_completion", `${id}:${date}`);
+      } else {
+        await db.insertCompletion(userId, id, date);
+        await db.awardPoints(userId, "habit_completion", `${id}:${date}`, pointRules.habit_completion, date);
+      }
+    });
   }
 
   function deleteHabit(id) {
@@ -384,11 +400,15 @@ function App() {
           : s,
       ),
     );
-    save(() =>
-      wasTaken
-        ? db.removeSupplementLog(id, date)
-        : db.insertSupplementLog(userId, id, date),
-    );
+    save(async () => {
+      if (wasTaken) {
+        await db.removeSupplementLog(id, date);
+        await db.revokePoints("supplement_log", `${id}:${date}`);
+      } else {
+        await db.insertSupplementLog(userId, id, date);
+        await db.awardPoints(userId, "supplement_log", `${id}:${date}`, pointRules.supplement_log, date);
+      }
+    });
   }
 
   function addExercise(data) {
