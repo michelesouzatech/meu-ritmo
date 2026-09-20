@@ -4,7 +4,6 @@ import {
   Trash2,
   Archive,
   ArchiveRestore,
-  History,
   Flame,
   Pencil,
   GripVertical,
@@ -36,6 +35,7 @@ import InsightsPanel from "../components/InsightsPanel.jsx";
 import SupplementsTab from "./SupplementsTab.jsx";
 import { todayISO, formatDatePtBr } from "../lib/date.js";
 import { habitProgress } from "../lib/habitProgress.js";
+import { habitPeriod, habitsOnDate, habitTimelineItem } from "../lib/habitPeriod.js";
 import { buildHabitInsights } from "../lib/insights.js";
 
 const TAB_KEY = "meuritmo:habits-screen-tab";
@@ -164,13 +164,18 @@ export function HabitFormSheet({ habit, onClose, onSave }) {
   );
 }
 
-function HabitCard({ habit, date, onToggleDate, onDelete, onFinish, onEdit }) {
+const ICON_BUTTON =
+  "flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft";
+
+function HabitCard({ habit, date, onToggleDate, onDelete, onFinish, onReactivate, onEdit }) {
   const progress = habitProgress(habit);
   const { isFinished, notStarted } = progress;
   const today = todayISO();
   const isEditingToday = date === today;
   const doneOnDate = habit.completions.includes(date);
   const canEdit = date <= today && (!habit.periodDays || date >= habit.startDate);
+  const isEnded = habit.status === "finished";
+  const endedLabel = isEnded ? formatDatePtBr(habitPeriod(habit).lastDay) : "";
 
   return (
     <div className="ritmo-card rounded-2xl p-3.5">
@@ -193,7 +198,14 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onFinish, onEdit }) {
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-ritmo-text">{habit.name}</p>
-          {progress.isDaily ? (
+          {isEnded ? (
+            // A sequência é contada a partir de hoje — num hábito encerrado
+            // ela diria "nenhum dia seguido" de algo que foi cumprido de verdade.
+            <p className="mt-0.5 text-xs text-ritmo-muted">
+              {habit.completions.length} dia{habit.completions.length === 1 ? "" : "s"} marcado
+              {habit.completions.length === 1 ? "" : "s"}
+            </p>
+          ) : progress.isDaily ? (
             <p className="mt-0.5 flex items-center gap-1 text-xs text-ritmo-muted">
               {progress.streak > 0 ? (
                 <>
@@ -226,82 +238,92 @@ function HabitCard({ habit, date, onToggleDate, onDelete, onFinish, onEdit }) {
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <span className="ritmo-glass-pill rounded-full px-2.5 py-1 text-xs font-semibold text-ritmo-ink-soft">
-            {progress.isDaily
-              ? "diário"
-              : notStarted
-                ? "em breve"
-                : isFinished
-                  ? "ciclo concluído"
-                  : `dia ${progress.currentDay} de ${habit.periodDays}`}
+            {isEnded
+              ? `encerrado em ${endedLabel}`
+              : progress.isDaily
+                ? "diário"
+                : notStarted
+                  ? "em breve"
+                  : isFinished
+                    ? "ciclo concluído"
+                    : `dia ${progress.currentDay} de ${habit.periodDays}`}
           </span>
-          <div className="flex items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => onEdit(habit)}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
-              aria-label="Editar hábito"
-            >
-              <Pencil size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => onDelete(habit.id)}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
-              aria-label="Excluir hábito"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={() => onFinish(habit.id)}
-            className="ritmo-ghost flex min-h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium text-ritmo-pink-deep"
-          >
-            <Archive size={12} /> Encerrar
-          </button>
+          {isEnded ? (
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => onReactivate(habit.id)}
+                className={ICON_BUTTON}
+                aria-label="Reativar hábito"
+              >
+                <ArchiveRestore size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => onDelete(habit.id)}
+                className={ICON_BUTTON}
+                aria-label="Excluir hábito"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => onEdit(habit)}
+                  className={ICON_BUTTON}
+                  aria-label="Editar hábito"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(habit.id)}
+                  className={ICON_BUTTON}
+                  aria-label="Excluir hábito"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => onFinish(habit.id)}
+                className="ritmo-ghost flex min-h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium text-ritmo-pink-deep"
+              >
+                <Archive size={12} /> Encerrar
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function FinishedHabitCard({ habit, onReactivate, onDelete }) {
-  const endedLabel = habit.endedAt ? formatDatePtBr(habit.endedAt.slice(0, 10)) : "";
+// Mesmo alinhamento do item arrastável, sem a alça: usado nos encerrados e
+// nos dias passados, onde reordenar não faz sentido.
+function HabitRow({ habit, date, onToggleDate, onDelete, onFinish, onReactivate, onEdit }) {
   return (
-    <div className="ritmo-card rounded-2xl p-3.5 opacity-70">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-ritmo-text">{habit.name}</p>
-          <p className="mt-0.5 text-xs text-ritmo-muted">
-            {habit.completions.length} dia{habit.completions.length === 1 ? "" : "s"} marcado
-            {habit.completions.length === 1 ? "" : "s"}
-            {endedLabel ? ` · encerrado em ${endedLabel}` : ""}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => onReactivate(habit.id)}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
-            aria-label="Reativar hábito"
-          >
-            <ArchiveRestore size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(habit.id)}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
-            aria-label="Excluir hábito"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
+    <div className="flex items-start gap-1">
+      <span className="w-7 shrink-0" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <HabitCard
+          habit={habit}
+          date={date}
+          onToggleDate={onToggleDate}
+          onDelete={onDelete}
+          onFinish={onFinish}
+          onReactivate={onReactivate}
+          onEdit={onEdit}
+        />
       </div>
     </div>
   );
 }
 
-function SortableHabitItem({ habit, date, onToggleDate, onDelete, onFinish, onEdit }) {
+function SortableHabitItem({ habit, date, onToggleDate, onDelete, onFinish, onReactivate, onEdit }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: habit.id });
 
@@ -329,39 +351,10 @@ function SortableHabitItem({ habit, date, onToggleDate, onDelete, onFinish, onEd
           onToggleDate={onToggleDate}
           onDelete={onDelete}
           onFinish={onFinish}
+          onReactivate={onReactivate}
           onEdit={onEdit}
         />
       </div>
-    </div>
-  );
-}
-
-function HabitsHistorySection({ habits, onReactivate, onDelete }) {
-  const [open, setOpen] = useState(false);
-  if (habits.length === 0) return null;
-
-  return (
-    <div className="mt-4">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="ritmo-ghost flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-ritmo-ink-soft"
-      >
-        <History size={13} />
-        {open ? "Ocultar" : "Ver"} hábitos encerrados ({habits.length})
-      </button>
-      {open && (
-        <div className="mt-3 space-y-3">
-          {habits.map((habit) => (
-            <FinishedHabitCard
-              key={habit.id}
-              habit={habit}
-              onReactivate={onReactivate}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -377,9 +370,16 @@ function HabitsTab({
   onAdd,
 }) {
   const [selectedDate, setSelectedDate] = useState(todayISO());
+  const isToday = selectedDate === todayISO();
   const activeHabits = useMemo(() => habits.filter((h) => h.status !== "finished"), [habits]);
-  const finishedHabits = useMemo(() => habits.filter((h) => h.status === "finished"), [habits]);
   const insights = useMemo(() => buildHabitInsights(activeHabits), [activeHabits]);
+  // Faixa de dias e calendário olham TODOS os hábitos: um encerrado continua
+  // contando nos dias em que estava valendo.
+  const timeline = useMemo(() => habits.map(habitTimelineItem), [habits]);
+  // A lista mostra o que existia no dia escolhido; os encerrados vão depois.
+  const dayHabits = useMemo(() => habitsOnDate(habits, selectedDate), [habits, selectedDate]);
+  const dayActive = dayHabits.filter((h) => h.status !== "finished");
+  const dayEnded = dayHabits.filter((h) => h.status === "finished");
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
@@ -404,7 +404,7 @@ function HabitsTab({
         <AddButton label="Novo" onClick={onAdd} />
       </header>
 
-      {activeHabits.length === 0 ? (
+      {habits.length === 0 ? (
         <p className="ritmo-card rounded-2xl p-4 text-center text-sm text-ritmo-muted">
           Toque no botão + para criar seu primeiro hábito.
         </p>
@@ -413,39 +413,78 @@ function HabitsTab({
           <DateDropdown
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
-            habits={activeHabits}
+            habits={timeline}
           />
           <HabitWeekStrip
-            habits={activeHabits}
+            habits={timeline}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
           />
           <InsightsPanel items={insights} className="mb-4" />
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={activeHabits.map((h) => h.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-3">
-                {activeHabits.map((habit) => (
-                  <SortableHabitItem
+          {dayHabits.length === 0 && (
+            <p className="ritmo-card rounded-2xl p-4 text-center text-sm text-ritmo-muted">
+              Nenhum hábito nesse dia.
+            </p>
+          )}
+          <div className="space-y-3">
+            {dayActive.length > 0 &&
+              (isToday ? (
+                // Arrastar só em "Hoje": numa data passada a lista tem só parte
+                // dos hábitos, e reordenar ali bagunçaria a ordem dos outros.
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={dayActive.map((h) => h.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-3">
+                      {dayActive.map((habit) => (
+                        <SortableHabitItem
+                          key={habit.id}
+                          habit={habit}
+                          date={selectedDate}
+                          onToggleDate={onToggleDate}
+                          onDelete={onDelete}
+                          onFinish={onFinish}
+                          onReactivate={onReactivate}
+                          onEdit={onEdit}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                dayActive.map((habit) => (
+                  <HabitRow
                     key={habit.id}
                     habit={habit}
                     date={selectedDate}
                     onToggleDate={onToggleDate}
                     onDelete={onDelete}
                     onFinish={onFinish}
+                    onReactivate={onReactivate}
                     onEdit={onEdit}
                   />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
+                ))
+              ))}
+            {dayEnded.map((habit) => (
+              <HabitRow
+                key={habit.id}
+                habit={habit}
+                date={selectedDate}
+                onToggleDate={onToggleDate}
+                onDelete={onDelete}
+                onFinish={onFinish}
+                onReactivate={onReactivate}
+                onEdit={onEdit}
+              />
+            ))}
+          </div>
         </>
       )}
-
-      <HabitsHistorySection
-        habits={finishedHabits}
-        onReactivate={onReactivate}
-        onDelete={onDelete}
-      />
     </div>
   );
 }

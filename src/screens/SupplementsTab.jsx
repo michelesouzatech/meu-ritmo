@@ -1,11 +1,16 @@
 import { useMemo, useState } from "react";
-import { Check, Trash2, Pencil, Flame, Archive, ArchiveRestore, History } from "lucide-react";
+import { Check, Trash2, Pencil, Flame, Archive, ArchiveRestore } from "lucide-react";
 import Sheet from "../components/Sheet.jsx";
 import AddButton from "../components/AddButton.jsx";
 import HabitWeekStrip from "../components/HabitWeekStrip.jsx";
 import DateDropdown from "../components/DateDropdown.jsx";
 import InsightsPanel from "../components/InsightsPanel.jsx";
 import { todayISO, formatDatePtBr } from "../lib/date.js";
+import {
+  supplementPeriod,
+  supplementsOnDate,
+  supplementTimelineItem,
+} from "../lib/habitPeriod.js";
 import { buildSupplementInsights } from "../lib/insights.js";
 
 export function SupplementFormSheet({ supplement, onClose, onSave }) {
@@ -92,12 +97,19 @@ function streakFor(takenDates) {
   return streak;
 }
 
-function SupplementCard({ supplement, date, onToggleDate, onDelete, onFinish, onEdit }) {
+const ICON_BUTTON =
+  "flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft";
+
+function SupplementCard({ supplement, date, onToggleDate, onDelete, onFinish, onReactivate, onEdit }) {
   const today = todayISO();
   const isEditingToday = date === today;
   const takenOnDate = supplement.takenDates.includes(date);
-  const streak = streakFor(supplement.takenDates);
+  const isEnded = supplement.active === false;
+  // A sequência é contada a partir de hoje — num suplemento encerrado ela
+  // sempre diria zero, então ele mostra o total e a data do fim.
+  const streak = isEnded ? 0 : streakFor(supplement.takenDates);
   const canEdit = date <= today;
+  const total = supplement.takenDates.length;
 
   return (
     <div className="ritmo-card rounded-2xl p-3.5">
@@ -129,98 +141,51 @@ function SupplementCard({ supplement, date, onToggleDate, onDelete, onFinish, on
               {streak} dia{streak === 1 ? "" : "s"} seguido{streak === 1 ? "" : "s"}
             </p>
           )}
+          {isEnded && (
+            <p className="mt-0.5 text-xs text-ritmo-muted">
+              {total} dia{total === 1 ? "" : "s"} tomado{total === 1 ? "" : "s"} · encerrado em{" "}
+              {formatDatePtBr(supplementPeriod(supplement).lastDay)}
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => onEdit(supplement)}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
-            aria-label="Editar suplemento"
-          >
-            <Pencil size={14} />
-          </button>
+          {isEnded ? (
+            <button
+              type="button"
+              onClick={() => onReactivate(supplement.id)}
+              className={ICON_BUTTON}
+              aria-label="Reativar suplemento"
+            >
+              <ArchiveRestore size={14} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onEdit(supplement)}
+              className={ICON_BUTTON}
+              aria-label="Editar suplemento"
+            >
+              <Pencil size={14} />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onDelete(supplement.id)}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
+            className={ICON_BUTTON}
             aria-label="Excluir suplemento"
           >
             <Trash2 size={14} />
           </button>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={() => onFinish(supplement.id)}
-        className="ritmo-ghost mt-2 flex min-h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium text-ritmo-pink-deep"
-      >
-        <Archive size={12} /> Encerrar
-      </button>
-    </div>
-  );
-}
-
-function FinishedSupplementCard({ supplement, onReactivate, onDelete }) {
-  const endedLabel = supplement.endedAt ? formatDatePtBr(supplement.endedAt.slice(0, 10)) : "";
-  return (
-    <div className="ritmo-card rounded-2xl p-3.5 opacity-70">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-ritmo-text">{supplement.name}</p>
-          <p className="mt-0.5 text-xs text-ritmo-muted">
-            {supplement.takenDates.length} dia{supplement.takenDates.length === 1 ? "" : "s"} tomado
-            {supplement.takenDates.length === 1 ? "" : "s"}
-            {endedLabel ? ` · encerrado em ${endedLabel}` : ""}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => onReactivate(supplement.id)}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
-            aria-label="Reativar suplemento"
-          >
-            <ArchiveRestore size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(supplement.id)}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-ritmo-text/30 transition-colors hover:bg-ritmo-hover hover:text-ritmo-ink-soft"
-            aria-label="Excluir suplemento"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SupplementsHistorySection({ supplements, onReactivate, onDelete }) {
-  const [open, setOpen] = useState(false);
-  if (supplements.length === 0) return null;
-
-  return (
-    <div className="mt-4">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="ritmo-ghost flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-ritmo-ink-soft"
-      >
-        <History size={13} />
-        {open ? "Ocultar" : "Ver"} suplementos encerrados ({supplements.length})
-      </button>
-      {open && (
-        <div className="mt-3 space-y-3">
-          {supplements.map((supplement) => (
-            <FinishedSupplementCard
-              key={supplement.id}
-              supplement={supplement}
-              onReactivate={onReactivate}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
+      {!isEnded && (
+        <button
+          type="button"
+          onClick={() => onFinish(supplement.id)}
+          className="ritmo-ghost mt-2 flex min-h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium text-ritmo-pink-deep"
+        >
+          <Archive size={12} /> Encerrar
+        </button>
       )}
     </div>
   );
@@ -232,16 +197,19 @@ function SupplementsTab({ supplements, onToggleDate, onDelete, onFinish, onReact
     () => supplements.filter((s) => s.active !== false),
     [supplements],
   );
-  const finishedSupplements = useMemo(
-    () => supplements.filter((s) => s.active === false),
-    [supplements],
+  // Faixa de dias e calendário olham TODOS os suplementos: um encerrado
+  // continua contando nos dias em que estava valendo. HabitCalendar e
+  // HabitWeekStrip leem o mesmo formato dos hábitos.
+  const timeline = useMemo(() => supplements.map(supplementTimelineItem), [supplements]);
+  // A lista mostra o que existia no dia escolhido; os encerrados vão depois.
+  const daySupplements = useMemo(
+    () => supplementsOnDate(supplements, selectedDate),
+    [supplements, selectedDate],
   );
-  // HabitCalendar/HabitWeekStrip só olham pra `name` + `completions` — os
-  // mesmos componentes do histórico de hábitos servem aqui sem duplicar nada.
-  const asHabitShape = useMemo(
-    () => activeSupplements.map((s) => ({ id: s.id, name: s.name, completions: s.takenDates })),
-    [activeSupplements],
-  );
+  const dayList = [
+    ...daySupplements.filter((s) => s.active !== false),
+    ...daySupplements.filter((s) => s.active === false),
+  ];
   const insights = useMemo(() => buildSupplementInsights(activeSupplements), [activeSupplements]);
 
   return (
@@ -251,7 +219,7 @@ function SupplementsTab({ supplements, onToggleDate, onDelete, onFinish, onReact
         <AddButton label="Novo" onClick={onAdd} />
       </div>
 
-      {activeSupplements.length === 0 ? (
+      {supplements.length === 0 ? (
         <p className="ritmo-card rounded-2xl p-4 text-center text-sm text-ritmo-muted">
           Toque no botão + para cadastrar seu primeiro suplemento.
         </p>
@@ -260,36 +228,37 @@ function SupplementsTab({ supplements, onToggleDate, onDelete, onFinish, onReact
           <DateDropdown
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
-            habits={asHabitShape}
+            habits={timeline}
             emptyLabel="Nenhum suplemento tomado nesse dia."
           />
           <HabitWeekStrip
-            habits={asHabitShape}
+            habits={timeline}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
           />
           <InsightsPanel items={insights} className="mb-4" />
-          <div className="space-y-3">
-            {activeSupplements.map((supplement) => (
-              <SupplementCard
-                key={supplement.id}
-                supplement={supplement}
-                date={selectedDate}
-                onToggleDate={onToggleDate}
-                onDelete={onDelete}
-                onFinish={onFinish}
-                onEdit={onEdit}
-              />
-            ))}
-          </div>
+          {dayList.length === 0 ? (
+            <p className="ritmo-card rounded-2xl p-4 text-center text-sm text-ritmo-muted">
+              Nenhum suplemento nesse dia.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {dayList.map((supplement) => (
+                <SupplementCard
+                  key={supplement.id}
+                  supplement={supplement}
+                  date={selectedDate}
+                  onToggleDate={onToggleDate}
+                  onDelete={onDelete}
+                  onFinish={onFinish}
+                  onReactivate={onReactivate}
+                  onEdit={onEdit}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
-
-      <SupplementsHistorySection
-        supplements={finishedSupplements}
-        onReactivate={onReactivate}
-        onDelete={onDelete}
-      />
     </div>
   );
 }

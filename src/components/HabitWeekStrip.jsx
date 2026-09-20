@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { habitDayColor, HABIT_DAY_INK } from "../lib/habitColor.js";
 import { toISODate, todayISO } from "../lib/date.js";
+import { timelineOnDate } from "../lib/habitPeriod.js";
 
 const WEEKDAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
 
@@ -69,15 +70,15 @@ function HabitWeekStrip({ habits, selectedDate, onSelectDate }) {
       <div className="grid grid-cols-7 gap-1">
         {days.map((d) => {
           const iso = toISODate(d);
-          const count = habits.reduce(
-            (acc, h) => acc + (h.completions.includes(iso) ? 1 : 0),
-            0,
-          );
-          const bg = habitDayColor(count, habits.length);
+          // A base da cor é só o que existia naquele dia: um hábito já
+          // encerrado conta nos dias dele, e um criado depois não pesa antes.
+          const onDay = timelineOnDate(habits, iso);
+          const count = onDay.filter((h) => h.completions.includes(iso)).length;
+          const bg = habitDayColor(count, onDay.length);
           const isFuture = iso > today;
           const isToday = iso === today;
           const isSelected = iso === selectedDate;
-          const isComplete = habits.length > 0 && count === habits.length;
+          const isComplete = onDay.length > 0 && count === onDay.length;
 
           return (
             <div key={iso} className="flex flex-col items-center gap-1">

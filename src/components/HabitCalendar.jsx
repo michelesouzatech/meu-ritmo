@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { buildMonthGrid } from "../lib/calendarGrid.js";
 import { habitDayColor, HABIT_DAY_INK } from "../lib/habitColor.js";
 import { toISODate, todayISO } from "../lib/date.js";
+import { timelineOnDate } from "../lib/habitPeriod.js";
 
 const WEEKDAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
 const MONTH_LABEL = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
@@ -77,7 +78,7 @@ function HabitCalendar({ habits, selectedDate, onSelectDate, emptyLabel = "Nenhu
 
             const iso = toISODate(new Date(year, month, day));
             const count = completionsByDate.get(iso)?.length ?? 0;
-            const bg = habitDayColor(count, habits.length);
+            const bg = habitDayColor(count, timelineOnDate(habits, iso).length);
             const isToday = iso === today;
             const isSelected = iso === selectedDate;
 

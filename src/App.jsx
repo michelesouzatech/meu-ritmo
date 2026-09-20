@@ -388,7 +388,9 @@ function App() {
   }
 
   function addSupplement(data) {
-    const supplement = { id: crypto.randomUUID(), ...data };
+    // createdAt não vai pro banco (ele grava o próprio) — é o que marca o
+    // primeiro dia do suplemento no histórico enquanto o app não recarrega.
+    const supplement = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...data };
     const position = supplementsRef.current.length;
     setSupplements((prev) => [...prev, supplement]);
     save(() => db.insertSupplement(userId, supplement, position));
